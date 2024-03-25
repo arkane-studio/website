@@ -26,13 +26,13 @@ function App() {
         <p>
           <button>
             <a href="https://docs.arkane.ch" target="_blank">
-              Arkane Docs
+              Arkane documentation
             </a>
           </button>
         </p>
       </div>
       <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
+        Work in progress. Read the docs for more information.
       </p>
     </>
   )
