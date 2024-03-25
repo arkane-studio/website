@@ -16,7 +16,7 @@ function App() {
           <img src={reactLogo} className="logo react" alt="React logo" />
         </a>
       </div>
-      <h1>Vite + React. 
+      <h1>Vite + React
         <span role="img" aria-label="heart">❤️</span>
       </h1>
       <div className="card">
@@ -24,7 +24,11 @@ function App() {
           count is {count}
         </button>
         <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
+          <button>
+            <a href="https://docs.arkane.ch" target="_blank">
+              Arkane Docs
+            </a>
+          </button>
         </p>
       </div>
       <p className="read-the-docs">
