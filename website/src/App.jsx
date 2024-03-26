@@ -26,7 +26,7 @@ function App() {
         <p>
           <button>
             <a href="https://docs.arkane.ch" target="_blank">
-              Arkane documentation
+              View documentation
             </a>
           </button>
         </p>
