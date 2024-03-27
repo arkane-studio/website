@@ -18,6 +18,7 @@ function App() {
       </div>
       <h1>Vite + React
         <span role="img" aria-label="heart">❤️</span>
+        <span role="img" aria-label="fire">🔥</span>
       </h1>
       <div className="card">
         <button onClick={() => setCount((count) => count + 1)}>
