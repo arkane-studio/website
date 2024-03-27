@@ -40,3 +40,68 @@
 .read-the-docs {
   color: #888;
 }
+
+body {
+  font-family: 'Arial', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  position: sticky;
+  top: 0;
+  background-color: transparent;
+  z-index: 1000;
+}
+
+.logo {
+  height: 40px;
+}
+
+.react {
+  height: 30px;
+  margin-left: 10px;
+}
+
+.dashboard-button {
+  background-color: transparent;
+  border: none;
+  color: rgba(212, 17, 17, 0.733);
+  cursor: pointer;
+  padding: 10px 20px;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
+}
+
+.dashboard-button:hover {
+  background-color: rgba(255, 0, 0, 0.1);
+}
+
+.content {
+  padding: 20px;
+}
+
+.card {
+  margin-top: 20px;
+}
+
+button {
+  padding: 10px 20px;
+  margin-right: 10px;
+  cursor: pointer;
+  border: none;
+  border-radius: 5px;
+}
+
+button:hover {
+  background-color: #e0e0e0;
+}
+
+.read-the-docs {
+  margin-top: 20px;
+  color: gray;
+}
