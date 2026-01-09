@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Referrer-Policy" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+
+    <title>A R K A N E | SYSTEM STATUS: ACTIVE</title>
+    <style>
+        /* --- CORE SETTINGS --- */
+        :root {
+            --bg-color: #050505;
+            --text-main: #e0e0e0;
+            --text-dim: #888;
+            --accent-red: #ff0000;
+            --card-bg: rgba(10, 10, 10, 0.65);
+            --card-border: 1px solid rgba(50, 50, 50, 0.5);
+            --font-tech: 'Courier New', Courier, monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-tech);
+            line-height: 1.6;
+            overflow-x: hidden;
+            cursor: none; /* Custom Cursor */
+        }
+
+        /* --- CUSTOM CURSOR --- */
+        .cursor-dot,
+        .cursor-outline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        .cursor-dot {
+            width: 6px;
+            height: 6px;
+            background-color: var(--accent-red);
+            box-shadow: 0 0 10px var(--accent-red);
+        }
+
+        .cursor-outline {
+            width: 30px;
+            height: 30px;
+            border: 1px solid rgba(255, 0, 0, 0.5);
+            transition: all 0.1s ease-out;
+        }
+
+        body.hovering .cursor-outline {
+            width: 45px;
+            height: 45px;
+            background-color: rgba(255, 0, 0, 0.15);
+            border-color: var(--accent-red);
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.2);
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            .cursor-dot, .cursor-outline { display: none; }
+            body { cursor: auto; }
+        }
+
+        #neural-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: #050505; }
+
+        .scanline {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, rgba(255, 0, 0, 0.02) 51%);
+            background-size: 100% 4px; pointer-events: none; z-index: 9999; animation: scan 8s linear infinite;
+        }
+        @keyframes scan { 0% { transform: translateY(0); } 100% { transform: translateY(4px); } }
+
+        /* --- NAVIGATION --- */
+        nav {
+            position: fixed; top: 0; width: 100%; padding: 1.5rem 3rem;
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(5, 5, 5, 0.85); border-bottom: 1px solid #1a1a1a; z-index: 1000;
+        }
+
+        .logo-link { text-decoration: none; cursor: none; }
+        .logo {
+            font-size: 1.5rem; font-weight: 900; letter-spacing: 0.5rem; color: var(--accent-red);
+            text-transform: uppercase; text-shadow: 0 0 10px rgba(255, 0, 0, 0.4); transition: all 0.3s;
+        }
+        .logo:hover { color: #fff; text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
+
+        .nav-links { display: flex; gap: 2rem; list-style: none; }
+        .nav-links a {
+            color: var(--text-dim); text-decoration: none; font-size: 0.85rem; letter-spacing: 0.1rem;
+            transition: color 0.3s; text-transform: uppercase; cursor: none;
+        }
+        .nav-links a:hover { color: var(--accent-red); }
+
+        /* --- HERO --- */
+        .hero { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; position: relative; padding: 0 1rem; }
+        .hero-title { font-size: clamp(3rem, 9vw, 8rem); font-weight: 900; letter-spacing: 1rem; color: var(--accent-red); margin-bottom: 0.5rem; text-shadow: 0 0 20px rgba(255, 0, 0, 0.6); animation: glitch-skew 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite; }
+        .hero-subtitle { font-size: 1rem; color: var(--text-dim); letter-spacing: 0.4rem; text-transform: uppercase; max-width: 800px; }
+
+        section { padding: 6rem 5%; border-top: 1px solid #111; }
+        .section-title { font-size: 2rem; color: var(--text-main); margin-bottom: 3rem; letter-spacing: 0.2rem; border-left: 3px solid var(--accent-red); padding-left: 1rem; text-transform: uppercase; }
+
+        /* --- GRID & CARDS --- */
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; }
+        .card {
+            background: var(--card-bg); border: var(--card-border); padding: 2.5rem; position: relative;
+            overflow: hidden; transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s; cursor: none;
+        }
+        .card:hover { transform: translateY(-5px); border-color: var(--accent-red); box-shadow: 0 0 30px rgba(255, 0, 0, 0.1); background: rgba(15, 15, 15, 0.8); }
+        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: var(--accent-red); transform: scaleX(0); transform-origin: left; transition: transform 0.4s ease-out; }
+        .card:hover::before { transform: scaleX(1); }
+        .card-icon { font-size: 2rem; margin-bottom: 1.5rem; color: var(--accent-red); }
+        .card h3 { margin-bottom: 1rem; font-size: 1.1rem; letter-spacing: 0.1rem; color: #fff; text-transform: uppercase; }
+        .card p { color: #999; font-size: 0.9rem; line-height: 1.7; }
+
+        /* --- TERMINAL --- */
+        .terminal-wrapper { max-width: 900px; margin: 0 auto; background: rgba(5, 5, 5, 0.9); border: 1px solid #333; box-shadow: 0 0 50px rgba(0,0,0,0.5); font-family: 'Courier New', monospace; }
+        .terminal-header { background: #1a1a1a; padding: 0.5rem 1rem; border-bottom: 1px solid #333; display: flex; gap: 0.5rem; align-items: center; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #555; }
+        .dot.red { background: #ff5555; }
+        .term-title { margin-left: 1rem; font-size: 0.8rem; color: #888; }
+        .terminal-body { padding: 2rem; font-size: 0.9rem; }
+
+        /* LOG ENTRY ALIGNMENT FIX */
+        .log-entry {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.7;
+            font-family: 'Courier New', monospace;
+        }
+        .log-entry:last-child { opacity: 1; margin-bottom: 0; }
+
+        .timestamp {
+            color: #555;
+            min-width: 100px;
+        }
+
+        .command {
+            color: var(--accent-red);
+            font-weight: bold;
+            min-width: 110px;
+        }
+
+        .output {
+            color: #ccc;
+            flex: 1;
+        }
+
+        .cursor { display: inline-block; width: 8px; height: 15px; background: var(--accent-red); animation: blink 1s infinite; vertical-align: middle; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* --- CONTACT / PGP --- */
+        .contact-grid { display: grid; gap: 3rem; }
+        .pgp-wrapper { position: relative; max-width: 100%; }
+        .pgp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-size: 0.8rem; color: #666; flex-wrap: wrap; gap: 10px; }
+        .pgp-controls { display: flex; gap: 10px; }
+
+        .copy-btn {
+            background: transparent; border: 1px solid #333; color: var(--accent-red);
+            font-family: var(--font-tech); padding: 2px 10px; cursor: none;
+            font-size: 0.7rem; transition: all 0.2s; text-transform: uppercase;
+        }
+        .copy-btn:hover { background: var(--accent-red); color: #000; box-shadow: 0 0 10px var(--accent-red); }
+
+        .pgp-container {
+            background: rgba(10, 10, 10, 0.3); border: 1px dashed #333; padding: 1.5rem;
+            font-size: 0.7rem; color: #555; overflow-x: auto; font-family: monospace; white-space: pre;
+            transition: all 0.5s ease-in-out; position: relative;
+        }
+        .pgp-container.collapsed { max-height: 140px; overflow: hidden; mask-image: linear-gradient(180deg, black 60%, transparent 100%); -webkit-mask-image: linear-gradient(180deg, black 60%, transparent 100%); border-bottom-color: transparent; }
+        .pgp-container.expanded { max-height: 2000px; mask-image: none; -webkit-mask-image: none; border-bottom-color: #333; }
+        .pgp-container::selection { background: var(--accent-red); color: #000; }
+
+        .email-link { color: var(--accent-red); text-decoration: none; font-size: 1.5rem; letter-spacing: 2px; transition: all 0.3s; display: inline-block; margin-bottom: 1rem; cursor: none; }
+        .email-link:hover { text-shadow: 0 0 15px rgba(255, 0, 0, 0.8); color: #fff; transform: translateX(10px); }
+
+        footer { background: transparent; padding: 3rem; text-align: center; border-top: 1px solid #111; font-size: 0.8rem; color: #444; }
+
+        @keyframes glitch-skew { 0% { transform: skew(0deg); } 20% { transform: skew(-2deg); } 40% { transform: skew(2deg); } 60% { transform: skew(0deg); } 80% { transform: skew(1deg); } 100% { transform: skew(0deg); } }
+        @media (max-width: 768px) { nav { padding: 1rem; flex-direction: column; gap: 1rem; position: relative; background: rgba(5,5,5,0.9); } .nav-links { flex-wrap: wrap; justify-content: center; gap: 1rem; } .hero-title { font-size: 3.5rem; } }
+    </style>
+</head>
+<body>
+
+    <div class="cursor-dot" data-cursor-dot></div>
+    <div class="cursor-outline" data-cursor-outline></div>
+
+    <div class="scanline"></div>
+    <canvas id="neural-bg"></canvas>
+
+    <nav>
+        <a href="https://arkane.ch" class="logo-link">
+            <div class="logo">A R K A N E</div>
+        </a>
+        <ul class="nav-links">
+            <li><a href="#capabilities">CORE_CAPABILITIES</a></li>
+            <li><a href="#logs">EXECUTION_LOGS</a></li>
+            <li><a href="#collective">THE_COLLECTIVE</a></li>
+            <li><a href="#contact">ENCRYPTED_COMMS</a></li>
+        </ul>
+    </nav>
+
+    <section class="hero">
+        <h1 class="hero-title">A R K A N E</h1>
+        <p class="hero-subtitle">SIGNAL IN THE NOISE // DEEP TECH RESEARCH // EVENT HORIZON ENGINEERING</p>
+    </section>
+
+    <section id="capabilities">
+        <h2 class="section-title">01_CORE_CAPABILITIES</h2>
+        <div class="grid-container">
+            <div class="card">
+                <div class="card-icon">◬</div>
+                <h3>FRACTAL TRADING</h3>
+                <p>
+                    Markets are chaotic systems governed by hidden order. We identify the <strong>attractors</strong> and anomalies within the data stream to project future states with high probability.
+                </p>
+            </div>
+            <div class="card">
+                <div class="card-icon">◉</div>
+                <h3>KERNEL ENGINEERING</h3>
+                <p>Designing efficient operating system modules. We write bare-metal code to minimize overhead and optimize communication between software and hardware.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">◈</div>
+                <h3>NEURAL ARCHITECTURES</h3>
+                <p>
+                    Building autonomous agents that evolve. We don't just train models; we engineer <strong>synthetic cognition</strong> capable of navigating high-entropy environments.
+                </p>
+            </div>
+            <div class="card">
+                <div class="card-icon">◱</div>
+                <h3>SYSTEM ARCHITECTURE</h3>
+                <p>Building the infrastructure that powers our research. From scalable data pipelines to secure internal communication protocols.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="logs">
+        <h2 class="section-title">02_EXECUTION_LOG</h2>
+        <div class="terminal-wrapper">
+            <div class="terminal-header">
+                <div class="dot red"></div>
+                <span class="term-title">root@arkane_core:~/dev_ops</span>
+            </div>
+            <div class="terminal-body">
+                <div class="log-entry">
+                    <span class="timestamp">[T+00:00:00]</span>
+                    <span class="command">SYS_INIT</span>
+                    <span class="output">Loading custom exokernel. Entropy dampeners: <span style="color: #00ff00;">ACTIVE</span>.</span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp">[T+00:00:04]</span>
+                    <span class="command">SIG_FILTER</span>
+                    <span class="output">Discarding 99.8% background noise. Focus locked on signal.</span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp">[T+00:00:12]</span>
+                    <span class="command">DEF_MATRIX</span>
+                    <span class="output">Deploying autonomous cognitive firewall. System integrity: 100%.</span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp">[T+00:00:45]</span>
+                    <span class="command">ANOMALY_DET</span>
+                    <span class="output">Fractal recurrence detected in sector 0x9. Pattern confirmed.</span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp" id="current-time">[Calculating...]</span>
+                    <span class="command">SCAN_VOID</span>
+                    <span class="output">Triangulating singularities. Waiting for handshake... <span class="cursor"></span></span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="collective">
+        <h2 class="section-title">03_THE_COLLECTIVE</h2>
+        <div style="max-width: 800px; color: #aaa;">
+            <p style="margin-bottom: 2rem; font-size: 1.1rem;">
+                ARKANE is a specialized research unit. We are currently not selling products.
+                We forge synthetic intelligence to navigate the entropy of modern systems. <strong>Like astronauts mapping the void</strong>, we engineer technology that aligns with human intent rather than exploiting it.
+            </p>
+            <div style="border-left: 2px solid var(--accent-red); padding-left: 20px; font-style: italic; color: #ddd; margin-bottom: 2rem;">
+                "Financial success is merely a byproduct of technical excellence."
+            </div>
+            <p style="color: #888; font-size: 0.9rem;">
+                ARKANE operates autonomously. Yet, we scan for <strong>singularities</strong>.
+                If your intellect forms a <strong>convergence point</strong> of neural architectures, system engineering, and financial dynamics,
+                we welcome you to the collective.
+            </p>
+        </div>
+    </section>
+
+    <section id="contact">
+        <h2 class="section-title">04_ENCRYPTED_COMMS</h2>
+        <div class="contact-grid">
+            <div>
+                <a href="mailto:info@arkane.ch" class="email-link">info@arkane.ch</a>
+                <p style="margin-top: 0.5rem; color: #666; font-size: 0.9rem;">
+                    // USE PGP FOR SENSITIVE DATA
+                </p>
+            </div>
+
+            <div class="pgp-wrapper">
+                <div class="pgp-header">
+                    <span>PGP PUBLIC KEY BLOCK (4096-bit RSA)</span>
+                    <div class="pgp-controls">
+                        <button id="toggle-btn" class="copy-btn" onclick="togglePgp()">[ EXPAND ]</button>
+                        <button class="copy-btn" onclick="copyPgp()">[ COPY_KEY ]</button>
+                    </div>
+                </div>
+<div id="pgp-content" class="pgp-container collapsed">-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+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
+=bySR
+-----END PGP PUBLIC KEY BLOCK-----</div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>A R K A N E &copy; 2026</p>
+        <p style="opacity: 0.4; margin-top: 0.5rem; font-size: 0.7rem;">NO TRACKING // NO COOKIES // JUST HTML</p>
+    </footer>
+
+    <script>
+        // --- CUSTOM CURSOR LOGIC ---
+        const cursorDot = document.querySelector('[data-cursor-dot]');
+        const cursorOutline = document.querySelector('[data-cursor-outline]');
+        let isHovering = false;
+        let mouseX = 0;
+        let mouseY = 0;
+        let outlineX = 0;
+        let outlineY = 0;
+
+        outlineX = window.innerWidth / 2;
+        outlineY = window.innerHeight / 2;
+
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+
+            cursorDot.style.left = `${mouseX}px`;
+            cursorDot.style.top = `${mouseY}px`;
+
+            const target = e.target;
+            if (target.matches('a, button, .card, .copy-btn, .logo') || target.closest('a') || target.closest('.card') || target.closest('button')) {
+                if (!isHovering) {
+                    isHovering = true;
+                    document.body.classList.add('hovering');
+                }
+            } else {
+                if (isHovering) {
+                    isHovering = false;
+                    document.body.classList.remove('hovering');
+                }
+            }
+        });
+
+        function animateCursor() {
+            outlineX += (mouseX - outlineX) * 0.15;
+            outlineY += (mouseY - outlineY) * 0.15;
+            cursorOutline.style.left = `${outlineX}px`;
+            cursorOutline.style.top = `${outlineY}px`;
+            requestAnimationFrame(animateCursor);
+        }
+        animateCursor();
+
+        // --- COPY & TOGGLE PGP ---
+        function copyPgp() {
+            const pgpText = document.getElementById('pgp-content').innerText;
+            navigator.clipboard.writeText(pgpText).then(() => {
+                const btn = document.querySelector('.copy-btn[onclick="copyPgp()"]');
+                const originalText = btn.innerText;
+                btn.innerText = "[ COPIED ]";
+                btn.style.color = "#00ff00";
+                btn.style.borderColor = "#00ff00";
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.style.color = "";
+                    btn.style.borderColor = "";
+                }, 2000);
+            });
+        }
+
+        function togglePgp() {
+            const container = document.getElementById('pgp-content');
+            const btn = document.getElementById('toggle-btn');
+            container.classList.toggle('collapsed');
+            container.classList.toggle('expanded');
+            btn.innerText = container.classList.contains('collapsed') ? "[ EXPAND ]" : "[ COLLAPSE ]";
+        }
+
+        // --- ADVANCED PARTICLE PHYSICS (DEEP SPACE SLOW MOTION) ---
+        const canvas = document.getElementById('neural-bg');
+        const ctx = canvas.getContext('2d');
+        let particlesArray;
+        let gravityPoints = [];
+
+        let mouse = { x: -1000, y: -1000, radius: 100 };
+
+        window.addEventListener('mousemove', (event) => {
+            mouse.x = event.x;
+            mouse.y = event.y;
+        });
+
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', () => { resizeCanvas(); initParticles(); });
+        resizeCanvas();
+
+        class GravityPoint {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                // SLOW MOTION: Reduziert auf 30%
+                this.vx = (Math.random() - 0.5) * 0.06;
+                this.vy = (Math.random() - 0.5) * 0.06;
+                this.radius = Math.random() * 100 + 100;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                // SLOW MOTION: Startgeschwindigkeit reduziert
+                this.vx = (Math.random() * 0.06) - 0.03;
+                this.vy = (Math.random() * 0.06) - 0.03;
+                this.size = Math.random() * 2;
+                this.color = '#ff0000';
+                this.isConnected = false;
+            }
+            update() {
+                // HARD SPEED LIMITS (Reduziert für Zeitlupe)
+                const maxConnectedSpeed = 0.1; // "Parken" (sehr langsam)
+                const maxSearchSpeed = 0.4;    // "Suchen" (langsam, aber schneller als Parken)
+
+                if (!this.isConnected) {
+                    // Einsam: Sehr sanft beschleunigen
+                    this.vx += (Math.random() - 0.5) * 0.01;
+                    this.vy += (Math.random() - 0.5) * 0.01;
+
+                    // Cap Speed
+                    let speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+                    if (speed > maxSearchSpeed) {
+                        this.vx = (this.vx / speed) * maxSearchSpeed;
+                        this.vy = (this.vy / speed) * maxSearchSpeed;
+                    }
+                } else {
+                    // Verbunden: Abbremsen
+                    this.vx *= 0.98;
+                    this.vy *= 0.98;
+
+                    // Cap Speed
+                    let speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+                    if (speed > maxConnectedSpeed) {
+                        this.vx = (this.vx / speed) * maxConnectedSpeed;
+                        this.vy = (this.vy / speed) * maxConnectedSpeed;
+                    }
+                }
+
+                // 1. Schwerkraft der Blobs (Minimalisiert)
+                let affectedByGravity = false;
+                for (let gp of gravityPoints) {
+                    let dx = gp.x - this.x;
+                    let dy = gp.y - this.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < gp.radius) {
+                        this.vx += dx * 0.00003; // Extrem schwache Anziehung
+                        this.vy += dy * 0.00003;
+                        affectedByGravity = true;
+                    }
+                }
+
+                // 2. Maus-Interaktion: SOFT REPEL (0.15 Kraft)
+                let dxM = mouse.x - this.x;
+                let dyM = mouse.y - this.y;
+                let distM = Math.sqrt(dxM*dxM + dyM*dyM);
+
+                if (distM < mouse.radius) {
+                    let forceDirectionX = dxM / distM;
+                    let forceDirectionY = dyM / distM;
+                    let force = (mouse.radius - distM) / mouse.radius;
+                    let directionX = forceDirectionX * force * 0.15;
+                    let directionY = forceDirectionY * force * 0.15;
+
+                    this.vx -= directionX;
+                    this.vy -= directionY;
+                }
+
+                // Drift (damit sie niemals ganz stillstehen)
+                if (Math.abs(this.vx) < 0.05) this.vx += (Math.random() - 0.5) * 0.002;
+                if (Math.abs(this.vy) < 0.05) this.vy += (Math.random() - 0.5) * 0.002;
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < 0) this.x = canvas.width;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.y < 0) this.y = canvas.height;
+                if (this.y > canvas.height) this.y = 0;
+            }
+            draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill(); }
+        }
+
+        function initParticles() {
+            particlesArray = [];
+            gravityPoints = [];
+
+            for (let i = 0; i < 4; i++) {
+                gravityPoints.push(new GravityPoint());
+            }
+
+            let numberOfParticles = (canvas.height * canvas.width) / 10000;
+            for (let i = 0; i < numberOfParticles; i++) { particlesArray.push(new Particle()); }
+        }
+
+        function animateParticles() {
+            requestAnimationFrame(animateParticles);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            gravityPoints.forEach(gp => gp.update());
+            particlesArray.forEach(p => p.isConnected = false);
+
+            for (let i = 0; i < particlesArray.length; i++) {
+                particlesArray[i].update();
+                particlesArray[i].draw();
+
+                for (let j = i; j < particlesArray.length; j++) {
+                    const dx = particlesArray[i].x - particlesArray[j].x;
+                    const dy = particlesArray[i].y - particlesArray[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < 120) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(255, 0, 0, ${0.2 - distance/600})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.moveTo(particlesArray[i].x, particlesArray[i].y);
+                        ctx.lineTo(particlesArray[j].x, particlesArray[j].y);
+                        ctx.stroke();
+                        particlesArray[i].isConnected = true;
+                        particlesArray[j].isConnected = true;
+                    }
+                }
+
+                let dx = mouse.x - particlesArray[i].x;
+                let dy = mouse.y - particlesArray[i].y;
+                let distance = Math.sqrt(dx*dx + dy*dy);
+                if (distance < mouse.radius) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(255, 0, 0, ${0.3 - distance/mouse.radius * 0.3})`;
+                    ctx.lineWidth = 0.8;
+                    ctx.moveTo(particlesArray[i].x, particlesArray[i].y);
+                    ctx.lineTo(mouse.x, mouse.y);
+                    ctx.stroke();
+                }
+            }
+        }
+        initParticles();
+        animateParticles();
+
+        // --- LIVE TIMESTAMP ---
+        function updateTime() {
+            const now = new Date();
+            const timeString = `[${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}]`;
+            const el = document.getElementById('current-time');
+            if(el) el.innerText = timeString;
+        }
+        setInterval(updateTime, 1000);
+    </script>
+</body>
+</html>
