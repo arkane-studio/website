@@ -115,7 +115,7 @@
             background: var(--card-bg); border: var(--card-border); padding: 2.5rem; position: relative;
             overflow: hidden; transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s; cursor: none;
         }
-        .card:hover { transform: translateY(-5px); border-color: var(--accent-red); box-shadow: 0 0 30px rgba(255, 0, 0, 0.1); background: rgba(15, 15, 15, 0.8); }
+        .card:hover { transform: translateY(-5px); border-color: var(--accent-red); box-shadow: 0 0 30px rgba(255, 0, 0, 0.15); background: rgba(15, 15, 15, 0.9); }
         .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: var(--accent-red); transform: scaleX(0); transform-origin: left; transition: transform 0.4s ease-out; }
         .card:hover::before { transform: scaleX(1); }
         .card-icon { font-size: 2rem; margin-bottom: 1.5rem; color: var(--accent-red); }
@@ -205,6 +205,7 @@
         <ul class="nav-links">
             <li><a href="#capabilities">CORE_CAPABILITIES</a></li>
             <li><a href="#logs">EXECUTION_LOGS</a></li>
+            <li><a href="#orchestration">ORCHESTRATION</a></li>
             <li><a href="#collective">THE_COLLECTIVE</a></li>
             <li><a href="#contact">ENCRYPTED_COMMS</a></li>
         </ul>
@@ -303,6 +304,22 @@
                 If your intellect forms a <strong>convergence point</strong> of neural architectures, system engineering, and/or financial dynamics,
                 we welcome you to the collective.
             </p>
+        </div>
+    </section>
+
+    <section id="orchestration">
+        <h2 class="section-title">04_COLLECTIVE_ORCHESTRATION</h2>
+        <div class="grid-container">
+            <div class="card" style="border-left: 2px solid var(--accent-red);">
+                <div class="card-icon">⧉</div>
+                <h3>SYNCHRONOUS NEURAL FABRIC</h3>
+                <p>We deploy autonomous agent swarms that operate within a synchronized neural fabric. By orchestrating multi-vector processing tasks across distributed nodes, we achieve throughput levels unreachable by siloed systems.</p>
+            </div>
+            <div class="card" style="border-left: 2px solid var(--accent-red);">
+                <div class="card-icon">⚡</div>
+                <h3>AUTONOMOUS WORKFLOWS</h3>
+                <p>Our infrastructure self-configures to optimize high-entropy workloads. Agents dynamically negotiate task priority, ensuring computational resources are allocated with precision to critical singularities.</p>
+            </div>
         </div>
     </section>
 
