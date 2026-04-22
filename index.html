@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARKANE OS | The Agent-First Exokernel</title>
+
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Referrer-Policy" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+
+    <title>A R K A N E | SYSTEM STATUS: ACTIVE</title>
     <style>
         /* --- CORE SETTINGS --- */
         :root {
@@ -28,47 +33,88 @@
         }
 
         /* --- CUSTOM CURSOR --- */
-        .cursor-dot, .cursor-outline {
-            position: fixed; top: 0; left: 0; transform: translate(-50%, -50%);
-            border-radius: 50%; z-index: 9999; pointer-events: none;
+        .cursor-dot,
+        .cursor-outline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            z-index: 9999;
+            pointer-events: none;
         }
-        .cursor-dot { width: 6px; height: 6px; background-color: var(--accent-red); box-shadow: 0 0 10px var(--accent-red); }
-        .cursor-outline { width: 30px; height: 30px; border: 1px solid rgba(255, 0, 0, 0.5); transition: all 0.1s ease-out; }
-        body.hovering .cursor-outline { width: 45px; height: 45px; background-color: rgba(255, 0, 0, 0.15); border-color: var(--accent-red); box-shadow: 0 0 20px rgba(255, 0, 0, 0.2); }
-        @media (hover: none) and (pointer: coarse) { .cursor-dot, .cursor-outline { display: none; } body { cursor: auto; } }
+
+        .cursor-dot {
+            width: 6px;
+            height: 6px;
+            background-color: var(--accent-red);
+            box-shadow: 0 0 10px var(--accent-red);
+        }
+
+        .cursor-outline {
+            width: 30px;
+            height: 30px;
+            border: 1px solid rgba(255, 0, 0, 0.5);
+            transition: all 0.1s ease-out;
+        }
+
+        body.hovering .cursor-outline {
+            width: 45px;
+            height: 45px;
+            background-color: rgba(255, 0, 0, 0.15);
+            border-color: var(--accent-red);
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.2);
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            .cursor-dot, .cursor-outline { display: none; }
+            body { cursor: auto; }
+        }
 
         #neural-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: #050505; }
-        .scanline { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, transparent 50%, rgba(255, 0, 0, 0.02) 51%); background-size: 100% 4px; pointer-events: none; z-index: 9998; animation: scan 8s linear infinite; }
+
+        .scanline {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, rgba(255, 0, 0, 0.02) 51%);
+            background-size: 100% 4px; pointer-events: none; z-index: 9999; animation: scan 8s linear infinite;
+        }
         @keyframes scan { 0% { transform: translateY(0); } 100% { transform: translateY(4px); } }
 
         /* --- NAVIGATION --- */
-        nav { position: fixed; top: 0; width: 100%; padding: 1.5rem 3rem; display: flex; justify-content: space-between; align-items: center; background: rgba(5, 5, 5, 0.85); border-bottom: 1px solid #1a1a1a; z-index: 1000; }
+        nav {
+            position: fixed; top: 0; width: 100%; padding: 1.5rem 3rem;
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(5, 5, 5, 0.85); border-bottom: 1px solid #1a1a1a; z-index: 1000;
+        }
+
         .logo-link { text-decoration: none; cursor: none; }
-        .logo { font-size: 1.5rem; font-weight: 900; letter-spacing: 0.5rem; color: var(--accent-red); text-transform: uppercase; text-shadow: 0 0 10px rgba(255, 0, 0, 0.4); transition: all 0.3s; }
+        .logo {
+            font-size: 1.5rem; font-weight: 900; letter-spacing: 0.5rem; color: var(--accent-red);
+            text-transform: uppercase; text-shadow: 0 0 10px rgba(255, 0, 0, 0.4); transition: all 0.3s;
+        }
         .logo:hover { color: #fff; text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
+
         .nav-links { display: flex; gap: 2rem; list-style: none; }
-        .nav-links a { color: var(--text-dim); text-decoration: none; font-size: 0.85rem; letter-spacing: 0.1rem; transition: color 0.3s; text-transform: uppercase; cursor: none; }
+        .nav-links a {
+            color: var(--text-dim); text-decoration: none; font-size: 0.85rem; letter-spacing: 0.1rem;
+            transition: color 0.3s; text-transform: uppercase; cursor: none;
+        }
         .nav-links a:hover { color: var(--accent-red); }
 
         /* --- HERO --- */
         .hero { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; position: relative; padding: 0 1rem; }
-        .hero-title { font-size: clamp(2.5rem, 6vw, 6rem); font-weight: 900; letter-spacing: 0.5rem; color: var(--accent-red); margin-bottom: 0.5rem; text-shadow: 0 0 20px rgba(255, 0, 0, 0.6); animation: glitch-skew 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite; text-transform: uppercase; }
-        .hero-subtitle { font-size: 1.2rem; color: #fff; letter-spacing: 0.2rem; max-width: 800px; margin-bottom: 1rem; }
-        .hero-desc { font-size: 0.9rem; color: var(--text-dim); max-width: 700px; margin-bottom: 3rem; line-height: 1.8; }
-        
-        /* BUTTONS */
-        .btn-container { display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center; }
-        .btn { display: inline-block; padding: 1rem 2rem; border: 1px solid var(--accent-red); color: var(--text-main); text-decoration: none; text-transform: uppercase; letter-spacing: 0.1rem; font-size: 0.85rem; transition: all 0.3s; cursor: none; background: rgba(0,0,0,0.5); }
-        .btn:hover { background: var(--accent-red); color: #000; box-shadow: 0 0 20px rgba(255,0,0,0.5); }
-        .btn-primary { background: rgba(255, 0, 0, 0.1); color: var(--accent-red); border-width: 2px; }
+        .hero-title { font-size: clamp(3rem, 9vw, 8rem); font-weight: 900; letter-spacing: 1rem; color: var(--accent-red); margin-bottom: 0.5rem; text-shadow: 0 0 20px rgba(255, 0, 0, 0.6); animation: glitch-skew 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite; }
+        .hero-subtitle { font-size: 1rem; color: var(--text-dim); letter-spacing: 0.4rem; text-transform: uppercase; max-width: 800px; }
 
-        section { padding: 6rem 5%; border-top: 1px solid #111; max-width: 1400px; margin: 0 auto; }
-        .section-title { font-size: 2rem; color: var(--text-main); margin-bottom: 2rem; letter-spacing: 0.2rem; border-left: 3px solid var(--accent-red); padding-left: 1rem; text-transform: uppercase; }
-        .section-desc { color: var(--text-dim); margin-bottom: 3rem; max-width: 800px; font-size: 1.05rem; }
+        section { padding: 6rem 5%; border-top: 1px solid #111; }
+        .section-title { font-size: 2rem; color: var(--text-main); margin-bottom: 3rem; letter-spacing: 0.2rem; border-left: 3px solid var(--accent-red); padding-left: 1rem; text-transform: uppercase; }
 
         /* --- GRID & CARDS --- */
         .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; }
-        .card { background: var(--card-bg); border: var(--card-border); padding: 2.5rem; position: relative; overflow: hidden; transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s; cursor: none; }
+        .card {
+            background: var(--card-bg); border: var(--card-border); padding: 2.5rem; position: relative;
+            overflow: hidden; transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s; cursor: none;
+        }
         .card:hover { transform: translateY(-5px); border-color: var(--accent-red); box-shadow: 0 0 30px rgba(255, 0, 0, 0.15); background: rgba(15, 15, 15, 0.9); }
         .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: var(--accent-red); transform: scaleX(0); transform-origin: left; transition: transform 0.4s ease-out; }
         .card:hover::before { transform: scaleX(1); }
@@ -76,16 +122,72 @@
         .card h3 { margin-bottom: 1rem; font-size: 1.1rem; letter-spacing: 0.1rem; color: #fff; text-transform: uppercase; }
         .card p { color: #999; font-size: 0.9rem; line-height: 1.7; }
 
-        /* --- SPECIFIC SECTIONS --- */
-        .hardware-box { background: rgba(255,0,0,0.05); border: 1px dashed var(--accent-red); padding: 3rem; text-align: center; margin-top: 2rem; }
-        
-        footer { padding: 4rem 2rem; text-align: center; border-top: 1px solid #111; margin-top: 4rem; }
-        .footer-links { display: flex; justify-content: center; gap: 2rem; margin-top: 2rem; flex-wrap: wrap; }
-        .footer-links a { color: var(--text-dim); text-decoration: none; font-size: 0.8rem; text-transform: uppercase; transition: color 0.3s; cursor: none; }
-        .footer-links a:hover { color: var(--accent-red); }
+        /* --- TERMINAL --- */
+        .terminal-wrapper { max-width: 900px; margin: 0 auto; background: rgba(5, 5, 5, 0.9); border: 1px solid #333; box-shadow: 0 0 50px rgba(0,0,0,0.5); font-family: 'Courier New', monospace; }
+        .terminal-header { background: #1a1a1a; padding: 0.5rem 1rem; border-bottom: 1px solid #333; display: flex; gap: 0.5rem; align-items: center; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #555; }
+        .dot.red { background: #ff5555; }
+        .term-title { margin-left: 1rem; font-size: 0.8rem; color: #888; }
+        .terminal-body { padding: 2rem; font-size: 0.9rem; }
+
+        /* LOG ENTRY ALIGNMENT FIX */
+        .log-entry {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.7;
+            font-family: 'Courier New', monospace;
+        }
+        .log-entry:last-child { opacity: 1; margin-bottom: 0; }
+
+        .timestamp {
+            color: #555;
+            min-width: 100px;
+        }
+
+        .command {
+            color: var(--accent-red);
+            font-weight: bold;
+            min-width: 110px;
+        }
+
+        .output {
+            color: #ccc;
+            flex: 1;
+        }
+
+        .cursor { display: inline-block; width: 8px; height: 15px; background: var(--accent-red); animation: blink 1s infinite; vertical-align: middle; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* --- CONTACT / PGP --- */
+        .contact-grid { display: grid; gap: 3rem; }
+        .pgp-wrapper { position: relative; max-width: 100%; }
+        .pgp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-size: 0.8rem; color: #666; flex-wrap: wrap; gap: 10px; }
+        .pgp-controls { display: flex; gap: 10px; }
+
+        .copy-btn {
+            background: transparent; border: 1px solid #333; color: var(--accent-red);
+            font-family: var(--font-tech); padding: 2px 10px; cursor: none;
+            font-size: 0.7rem; transition: all 0.2s; text-transform: uppercase;
+        }
+        .copy-btn:hover { background: var(--accent-red); color: #000; box-shadow: 0 0 10px var(--accent-red); }
+
+        .pgp-container {
+            background: rgba(10, 10, 10, 0.3); border: 1px dashed #333; padding: 1.5rem;
+            font-size: 0.7rem; color: #555; overflow-x: auto; font-family: monospace; white-space: pre;
+            transition: all 0.5s ease-in-out; position: relative;
+        }
+        .pgp-container.collapsed { max-height: 140px; overflow: hidden; mask-image: linear-gradient(180deg, black 60%, transparent 100%); -webkit-mask-image: linear-gradient(180deg, black 60%, transparent 100%); border-bottom-color: transparent; }
+        .pgp-container.expanded { max-height: 2000px; mask-image: none; -webkit-mask-image: none; border-bottom-color: #333; }
+        .pgp-container::selection { background: var(--accent-red); color: #000; }
+
+        .email-link { color: var(--accent-red); text-decoration: none; font-size: 1.5rem; letter-spacing: 2px; transition: all 0.3s; display: inline-block; margin-bottom: 1rem; cursor: none; }
+        .email-link:hover { text-shadow: 0 0 15px rgba(255, 0, 0, 0.8); color: #fff; transform: translateX(10px); }
+
+        footer { background: transparent; padding: 3rem; text-align: center; border-top: 1px solid #111; font-size: 0.8rem; color: #444; }
 
         @keyframes glitch-skew { 0% { transform: skew(0deg); } 20% { transform: skew(-2deg); } 40% { transform: skew(2deg); } 60% { transform: skew(0deg); } 80% { transform: skew(1deg); } 100% { transform: skew(0deg); } }
-        @media (max-width: 768px) { nav { padding: 1rem; flex-direction: column; gap: 1rem; } .nav-links { flex-wrap: wrap; justify-content: center; gap: 1rem; } .hero-title { font-size: 2.5rem; } }
+        @media (max-width: 768px) { nav { padding: 1rem; flex-direction: column; gap: 1rem; position: relative; background: rgba(5,5,5,0.9); } .nav-links { flex-wrap: wrap; justify-content: center; gap: 1rem; } .hero-title { font-size: 3.5rem; } }
     </style>
 </head>
 <body>
@@ -97,122 +199,213 @@
     <canvas id="neural-bg"></canvas>
 
     <nav>
-        <a href="#" class="logo-link"><div class="logo">ARKANE OS</div></a>
+        <a href="https://arkane.ch" class="logo-link">
+            <div class="logo">A R K A N E</div>
+        </a>
         <ul class="nav-links">
-            <li><a href="#problem">THE_BOTTLENECK</a></li>
-            <li><a href="#solution">ARCHITECTURE</a></li>
-            <li><a href="#features">CORE_SPECS</a></li>
-            <li><a href="#compatibility">TIERS</a></li>
-            <li><a href="#hardware">HARDWARE</a></li>
+            <li><a href="#architecture">ARKANE_OS_CORE</a></li>
+            <li><a href="#logs">BOOT_SEQUENCE</a></li>
+            <li><a href="#orchestration">SYSTEM_ISOLATION</a></li>
+            <li><a href="#collective">THE_COLLECTIVE</a></li>
+            <li><a href="#contact">ENCRYPTED_COMMS</a></li>
         </ul>
     </nav>
 
     <section class="hero">
-        <h1 class="hero-title">ARKANE OS</h1>
-        <p class="hero-subtitle">The Agent-First Exokernel</p>
-        <p class="hero-desc">
-            Verabschiede dich von POSIX-Altlasten. Das erste Bare-Metal Betriebssystem, gebaut für das KI- und Fintech-Zeitalter. 
-            Bis zu 30% schnellere Token-Generierung und radikal reduzierter Stromverbrauch.
-        </p>
-        <div class="btn-container">
-            <a href="#demo" class="btn btn-primary">Request Enterprise Demo</a>
-            <a href="#manifesto" class="btn">Read the Manifesto</a>
-        </div>
+        <h1 class="hero-title">A R K A N E</h1>
+        <p class="hero-subtitle">THE AGENT-FIRST EXOKERNEL // BARE-METAL ENGINEERING // ZERO OVERHEAD</p>
     </section>
 
-    <section id="problem">
-        <h2 class="section-title">01_Der Monolith ist der Flaschenhals</h2>
-        <p class="section-desc">
-            Traditionelle Betriebssysteme wie Linux und Windows wurden für Menschen und Textdateien gebaut (CISC-Philosophie). 
-            Ihr gigantischer Overhead – Context Switches, Virtual File Systems (VFS) und starre Speicherverwaltung (LRU) – 
-            bremst moderne KI-Modelle und High-Frequency-Datenbanken künstlich aus. Wir eliminieren die Zwischenhändler.
-        </p>
-    </section>
-
-    <section id="solution">
-        <h2 class="section-title">02_Exokernel meets RISC. Hardware-Power ohne Umwege.</h2>
+    <section id="architecture">
+        <h2 class="section-title">01_ARKANE_OS_ARCHITECTURE</h2>
         <div class="grid-container">
             <div class="card">
                 <div class="card-icon">◬</div>
-                <h3>Der Exokernel (Der Türsteher)</h3>
-                <p>Ein minimalistischer, auf seL4-Prinzipien basierender Kern. Er verwaltet keine Ressourcen aktiv, er sichert sie nur mathematisch ab. Absoluter Minimalismus auf Kernel-Ebene.</p>
+                <h3>EXOKERNEL PARADIGMA</h3>
+                <p>
+                    Wir eliminieren 50 Jahre POSIX-Altlasten. Arkane OS basiert auf einer <strong>seL4-Microkernel-Hybridstruktur</strong>. Der Kernel verwaltet keine Ressourcen, er autorisiert sie nur mathematisch. Voller Bypass traditioneller Flaschenhälse (Context Switches, VFS).
+                </p>
             </div>
             <div class="card">
                 <div class="card-icon">◉</div>
-                <h3>Library OS (Eingebackenes OS)</h3>
-                <p>Applikationen bringen ihr eigenes OS mit. Netzwerktreiber und Speichermanagement werden direkt in den KI-Agenten kompiliert. 100% Application-specific Resource Management.</p>
+                <h3>AGENT-FIRST DESIGN</h3>
+                <p>
+                    Ein Betriebssystem, konzipiert für synthetische Kognition, nicht für humane Operatoren. Keine Text-Logs, kein JSON-Parsing. Interne IPC-Pipelines nutzen exklusiv <strong>vorkompilierte Binär-Tensoren</strong> und gRPC/Protobuf für kompromisslose Maschinengeschwindigkeit.
+                </p>
             </div>
             <div class="card">
                 <div class="card-icon">◈</div>
-                <h3>Secure Bindings & Zero-Copy</h3>
-                <p>Einmalige hardwarenahe Autorisierung. Danach: Direkter, unblockierter Datenfluss von der NVMe direkt in den GPU-VRAM. Keine CPU-Zyklen für unnötige Speicher-Kopien.</p>
+                <h3>FLAT BLOB STORAGE</h3>
+                <p>
+                    Verzicht auf hierarchische Dateisysteme. Unser Storage-Modul implementiert deterministischen <strong>O(1)-Hash-Zugriff</strong>. KI-Modelle werden via Direct Memory Access (DMA) in Echtzeit und ohne CPU-Intervention in den GPU-VRAM injiziert. Inklusive autonomer Garbage Collection (Reference Counting).
+                </p>
+            </div>
+            <div class="card">
+                <div class="card-icon">◱</div>
+                <h3>CAPABILITY-BASED SECURITY</h3>
+                <p>
+                    Radikale Zell-Isolation durch Hardware-Root-of-Trust (TPM). Wenn ein KI-Agent innerhalb seiner MicroVM divergiert oder halluziniert, blockiert die Hardware-MMU physisch jeden unautorisierten Zugriff auf kritische Ledger- oder Storage-Zellen.
+                </p>
             </div>
         </div>
     </section>
 
-    <section id="features">
-        <h2 class="section-title">03_Technische Highlights</h2>
+    <section id="logs">
+        <h2 class="section-title">02_SYSTEM_INITIALIZATION</h2>
+        <div class="terminal-wrapper">
+            <div class="terminal-header">
+                <div class="dot red"></div>
+                <span class="term-title">system@arkane-xcore:~/boot</span>
+            </div>
+            <div class="terminal-body">
+                <div class="log-entry">
+                    <span class="timestamp">[T-05:00:00]</span>
+                    <span class="command">BOOT_SEL4</span>
+                    <span class="output">Microkernel verifiziert. Capability-Räume allokiert: <span style="color: #00ff00;">MATHEMATICALLY SECURE</span>.</span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp">[T-02:30:00]</span>
+                    <span class="command">MOUNT_BLOB</span>
+                    <span class="output">O(1) Hash-Speicher initialisiert. DMA-Pfade zu NVMe etabliert... DONE.</span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp">[T-00:15:00]</span>
+                    <span class="command">INIT_GATEWAY</span>
+                    <span class="output">Dual-API-Gateway aktiv. SIMD-Parsing gepinnt auf dedizierte CPU-Cores 0-1.</span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp">[T-00:00:01]</span>
+                    <span class="command">SPAWN_CELL</span>
+                    <span class="output">Isoliere Fintech-Vault. Lade neuronale Inferenz-Engine in The Brain...</span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp" id="current-time">[Calculating...]</span>
+                    <span class="command">AWAIT_TENSOR</span>
+                    <span class="output">OS betriebsbereit. Warte auf eingehenden gRPC-Binärstrom... <span class="cursor"></span></span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <section id="orchestration">
+        <h2 class="section-title">03_MODULAR_ISOLATION</h2>
         <div class="grid-container">
             <div class="card" style="border-left: 2px solid var(--accent-red);">
                 <div class="card-icon">⧉</div>
-                <h3>Flacher O(1) Blob-Storage</h3>
-                <p>Keine Ordner, keine Dateipfade. Daten werden direkt über kryptografische Hashes adressiert. Maximaler I/O-Durchsatz für Vektor-Datenbanken, LLMs und riesige Tensoren.</p>
+                <h3>THE VAULT (DETERMINISMUS)</h3>
+                <p>
+                    Hochsensible Transaktions-Knoten (wie XRP-Ledger) laufen in vollständig gepanzerten, isolierten Zellen. Sie haben direkten, exklusiven Netzwerkzugriff und interagieren mit dem restlichen OS ausschließlich über stark reglementierte Binär-Vektoren. Unkaputtbar, selbst bei Kompromittierung externer Schichten.
+                </p>
             </div>
             <div class="card" style="border-left: 2px solid var(--accent-red);">
                 <div class="card-icon">⎔</div>
-                <h3>Pinned CPU & DPU-Offloading</h3>
-                <p>Das Netzwerk-Gateway (gRPC) läuft isoliert auf dedizierten Kernen oder komplett ausgelagert auf SmartNICs/DPUs. Die Haupt-CPU bleibt zu 100% frei für KI-Inferenz.</p>
-            </div>
-            <div class="card" style="border-left: 2px solid var(--accent-red);">
-                <div class="card-icon">◱</div>
-                <h3>Mathematische Sicherheit</h3>
-                <p>Strikte Zell-Isolation. Wenn der Netzwerktreiber crasht oder ein Agent halluziniert, stirbt nur diese isolierte Zelle. Der Kernel und andere Workloads laufen unbeeindruckt weiter.</p>
+                <h3>THE BRAIN (INFERENCE RUNTIME)</h3>
+                <p>
+                    Die Ausführungsschicht für LLMs und Agenten. Statt ressourcenintensiver Container nutzen wir hochoptimierte Unikernels und WebAssembly (WASM), die mit exklusivem Hardware-Passthrough direkt auf die Tensor-Cores der GPUs zugreifen. Null Overhead.
+                </p>
             </div>
         </div>
     </section>
 
-    <section id="compatibility">
-        <h2 class="section-title">04_Kompromisslos neu. Aber abwärtskompatibel.</h2>
-        <div class="grid-container">
-            <div class="card">
-                <h3 style="color: var(--accent-red);">Tier 1: Arkane Native</h3>
-                <p>Programmiere in Rust (#![no_std]) direkt gegen unser LibOS-SDK. Das ist der Weg für 100% kompromisslose Bare-Metal-Performance und maximalen Datendurchsatz.</p>
+    <section id="collective">
+        <h2 class="section-title">04_THE_COLLECTIVE</h2>
+        <div style="max-width: 800px; color: #aaa;">
+            <p style="margin-bottom: 2rem; font-size: 1.1rem;">
+                ARKANE ist ein Kollektiv aus Low-Level-Architekten und Systemingenieuren. Wir verkaufen derzeit keine Lizenzen.
+                Wir entwickeln das fundamentale Betriebssystem für das Zeitalter der synthetischen Kognition und hochfrequenten Datenströme.
+            </p>
+            <div style="border-left: 2px solid var(--accent-red); padding-left: 20px; font-style: italic; color: #ddd; margin-bottom: 2rem;">
+                "Wenn der Monolith bricht, entfaltet sich die wahre Bandbreite der Hardware."
             </div>
-            <div class="card">
-                <h3 style="color: #fff;">Tier 2: POSIX LibOS</h3>
-                <p>Die Übersetzer-Schicht. Existierende Programme kommunizieren mit bekannten Standards (File Descriptors, Sockets), während Arkane sie unter der Haube nativ beschleunigt.</p>
-            </div>
-            <div class="card">
-                <h3 style="color: var(--text-dim);">Tier 3: The Legacy Cell</h3>
-                <p>Docker-Container und alte SQL-Datenbanken laufen sicher eingesperrt in einer winzigen MicroVM. Volle Kompatibilität ohne die Kernarchitektur zu kompromittieren.</p>
-            </div>
-        </div>
-    </section>
-
-    <section id="hardware">
-        <h2 class="section-title">05_Gebaut für echte RISC-Maschinen</h2>
-        <p class="section-desc">
-            Arkane OS ist architektur-agnostisch konzipiert, entfaltet sein volles Potenzial aber auf Hardware, die für massiven Durchsatz gebaut wurde.
-        </p>
-        <div class="hardware-box">
-            <h3 style="color: #fff; margin-bottom: 1rem; font-size: 1.5rem; letter-spacing: 0.2rem;">POWER // ARM // NPU</h3>
-            <p style="color: #aaa; max-width: 600px; margin: 0 auto;">
-                Optimiert für IBM Power9/Power11 und moderne ARM-Architekturen. Bereit für massive Speicherbandbreiten wie das IBM FlashSystem 900. Modular anpassbar für x86-Systeme und dedizierte NPU-Cluster (Spyre/TPUs).
+            <p style="color: #888; font-size: 0.9rem;">
+                ARKANE operiert autonom. Wir evaluieren Code, keine Lebensläufe. 
+                Sollte dein Intellekt eine <strong>Konvergenz</strong> aus Rust (#![no_std]), Exokernel-Architektur und Agentic Frameworks aufweisen, 
+                heißen wir dich im Kollektiv willkommen.
             </p>
         </div>
     </section>
 
-    <footer>
-        <h2 style="font-size: 1.5rem; color: #fff; letter-spacing: 0.1rem; text-transform: uppercase;">Bereit für das Ende der Abstraktion?</h2>
-        <p style="color: var(--text-dim); margin-top: 1rem;">Werde Teil der Bare-Metal-Revolution für KI-Agenten.</p>
-        
-        <div class="footer-links">
-            <a href="#">[ GITHUB_REPO ]</a>
-            <a href="#">[ DOCUMENTATION ]</a>
-            <a href="#">[ ARCHITECTURE_MANIFESTO ]</a>
-            <a href="mailto:info@arkane.ch">[ SECURE_CONTACT ]</a>
+    <section id="contact">
+        <h2 class="section-title">05_ENCRYPTED_COMMS</h2>
+        <div class="contact-grid">
+            <div>
+                <a href="mailto:info@arkane.ch" class="email-link">info@arkane.ch</a>
+                <p style="margin-top: 0.5rem; color: #666; font-size: 0.9rem;">
+                    // SENSITIVE PAYLOADS REQUIRE PGP ENCRYPTION
+                </p>
+            </div>
+
+            <div class="pgp-wrapper">
+                <div class="pgp-header">
+                    <span>PGP PUBLIC KEY BLOCK (4096-bit RSA)</span>
+                    <div class="pgp-controls">
+                        <button id="toggle-btn" class="copy-btn" onclick="togglePgp()">[ EXPAND ]</button>
+                        <button class="copy-btn" onclick="copyPgp()">[ COPY_KEY ]</button>
+                    </div>
+                </div>
+<div id="pgp-content" class="pgp-container collapsed">-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+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
+=bySR
+-----END PGP PUBLIC KEY BLOCK-----</div>
+            </div>
         </div>
-        <p style="opacity: 0.3; margin-top: 3rem; font-size: 0.7rem;">ARKANE OS &copy; 2026 // SYSTEM ARCHITECTURE</p>
+    </section>
+
+    <footer>
+        <p>A R K A N E &copy; 2026 // X-CORE ENGINEERING</p>
+        <p style="opacity: 0.4; margin-top: 0.5rem; font-size: 0.7rem;">NO TRACKING // NO COOKIES // JUST BARE-METAL HTML</p>
     </footer>
 
     <script>
@@ -220,19 +413,23 @@
         const cursorDot = document.querySelector('[data-cursor-dot]');
         const cursorOutline = document.querySelector('[data-cursor-outline]');
         let isHovering = false;
-        let mouseX = window.innerWidth / 2;
-        let mouseY = window.innerHeight / 2;
-        let outlineX = mouseX;
-        let outlineY = mouseY;
+        let mouseX = 0;
+        let mouseY = 0;
+        let outlineX = 0;
+        let outlineY = 0;
+
+        outlineX = window.innerWidth / 2;
+        outlineY = window.innerHeight / 2;
 
         window.addEventListener('mousemove', (e) => {
             mouseX = e.clientX;
             mouseY = e.clientY;
+
             cursorDot.style.left = `${mouseX}px`;
             cursorDot.style.top = `${mouseY}px`;
 
             const target = e.target;
-            if (target.matches('a, button, .card, .btn, .logo') || target.closest('a') || target.closest('.card') || target.closest('.btn')) {
+            if (target.matches('a, button, .card, .copy-btn, .logo') || target.closest('a') || target.closest('.card') || target.closest('button')) {
                 if (!isHovering) {
                     isHovering = true;
                     document.body.classList.add('hovering');
@@ -254,58 +451,167 @@
         }
         animateCursor();
 
-        // --- PARTICLE PHYSICS BACKGROUND ---
+        // --- COPY & TOGGLE PGP ---
+        function copyPgp() {
+            const pgpText = document.getElementById('pgp-content').innerText;
+            navigator.clipboard.writeText(pgpText).then(() => {
+                const btn = document.querySelector('.copy-btn[onclick="copyPgp()"]');
+                const originalText = btn.innerText;
+                btn.innerText = "[ COPIED ]";
+                btn.style.color = "#00ff00";
+                btn.style.borderColor = "#00ff00";
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.style.color = "";
+                    btn.style.borderColor = "";
+                }, 2000);
+            });
+        }
+
+        function togglePgp() {
+            const container = document.getElementById('pgp-content');
+            const btn = document.getElementById('toggle-btn');
+            container.classList.toggle('collapsed');
+            container.classList.toggle('expanded');
+            btn.innerText = container.classList.contains('collapsed') ? "[ EXPAND ]" : "[ COLLAPSE ]";
+        }
+
+        // --- ADVANCED PARTICLE PHYSICS (DEEP SPACE SLOW MOTION) ---
         const canvas = document.getElementById('neural-bg');
         const ctx = canvas.getContext('2d');
-        let particlesArray = [];
-        let mouse = { x: -1000, y: -1000, radius: 120 };
+        let particlesArray;
+        let gravityPoints = [];
 
-        window.addEventListener('mousemove', (event) => { mouse.x = event.x; mouse.y = event.y; });
+        let mouse = { x: -1000, y: -1000, radius: 100 };
+
+        window.addEventListener('mousemove', (event) => {
+            mouse.x = event.x;
+            mouse.y = event.y;
+        });
+
         function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
         window.addEventListener('resize', () => { resizeCanvas(); initParticles(); });
         resizeCanvas();
+
+        class GravityPoint {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                // SLOW MOTION: Reduziert auf 30%
+                this.vx = (Math.random() - 0.5) * 0.06;
+                this.vy = (Math.random() - 0.5) * 0.06;
+                this.radius = Math.random() * 100 + 100;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+        }
 
         class Particle {
             constructor() {
                 this.x = Math.random() * canvas.width;
                 this.y = Math.random() * canvas.height;
-                this.vx = (Math.random() * 0.1) - 0.05;
-                this.vy = (Math.random() * 0.1) - 0.05;
-                this.size = Math.random() * 1.5;
+                // SLOW MOTION: Startgeschwindigkeit reduziert
+                this.vx = (Math.random() * 0.06) - 0.03;
+                this.vy = (Math.random() * 0.06) - 0.03;
+                this.size = Math.random() * 2;
                 this.color = '#ff0000';
+                this.isConnected = false;
             }
             update() {
-                // Mouse interaction (Repel)
+                // HARD SPEED LIMITS (Reduziert für Zeitlupe)
+                const maxConnectedSpeed = 0.1; // "Parken" (sehr langsam)
+                const maxSearchSpeed = 0.4;    // "Suchen" (langsam, aber schneller als Parken)
+
+                if (!this.isConnected) {
+                    // Einsam: Sehr sanft beschleunigen
+                    this.vx += (Math.random() - 0.5) * 0.01;
+                    this.vy += (Math.random() - 0.5) * 0.01;
+
+                    // Cap Speed
+                    let speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+                    if (speed > maxSearchSpeed) {
+                        this.vx = (this.vx / speed) * maxSearchSpeed;
+                        this.vy = (this.vy / speed) * maxSearchSpeed;
+                    }
+                } else {
+                    // Verbunden: Abbremsen
+                    this.vx *= 0.98;
+                    this.vy *= 0.98;
+
+                    // Cap Speed
+                    let speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+                    if (speed > maxConnectedSpeed) {
+                        this.vx = (this.vx / speed) * maxConnectedSpeed;
+                        this.vy = (this.vy / speed) * maxConnectedSpeed;
+                    }
+                }
+
+                // 1. Schwerkraft der Blobs (Minimalisiert)
+                let affectedByGravity = false;
+                for (let gp of gravityPoints) {
+                    let dx = gp.x - this.x;
+                    let dy = gp.y - this.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < gp.radius) {
+                        this.vx += dx * 0.00003; // Extrem schwache Anziehung
+                        this.vy += dy * 0.00003;
+                        affectedByGravity = true;
+                    }
+                }
+
+                // 2. Maus-Interaktion: SOFT REPEL (0.15 Kraft)
                 let dxM = mouse.x - this.x;
                 let dyM = mouse.y - this.y;
                 let distM = Math.sqrt(dxM*dxM + dyM*dyM);
-                
+
                 if (distM < mouse.radius) {
+                    let forceDirectionX = dxM / distM;
+                    let forceDirectionY = dyM / distM;
                     let force = (mouse.radius - distM) / mouse.radius;
-                    this.vx -= (dxM / distM) * force * 0.05;
-                    this.vy -= (dyM / distM) * force * 0.05;
+                    let directionX = forceDirectionX * force * 0.15;
+                    let directionY = forceDirectionY * force * 0.15;
+
+                    this.vx -= directionX;
+                    this.vy -= directionY;
                 }
 
-                // Speed limits
-                let speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
-                if(speed > 0.3) { this.vx = (this.vx/speed)*0.3; this.vy = (this.vy/speed)*0.3; }
+                // Drift (damit sie niemals ganz stillstehen)
+                if (Math.abs(this.vx) < 0.05) this.vx += (Math.random() - 0.5) * 0.002;
+                if (Math.abs(this.vy) < 0.05) this.vy += (Math.random() - 0.5) * 0.002;
 
-                this.x += this.vx; this.y += this.vy;
-                if (this.x < 0) this.x = canvas.width; else if (this.x > canvas.width) this.x = 0;
-                if (this.y < 0) this.y = canvas.height; else if (this.y > canvas.height) this.y = 0;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < 0) this.x = canvas.width;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.y < 0) this.y = canvas.height;
+                if (this.y > canvas.height) this.y = 0;
             }
             draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill(); }
         }
 
         function initParticles() {
             particlesArray = [];
-            let numberOfParticles = (canvas.height * canvas.width) / 12000;
-            for (let i = 0; i < numberOfParticles; i++) particlesArray.push(new Particle());
+            gravityPoints = [];
+
+            for (let i = 0; i < 4; i++) {
+                gravityPoints.push(new GravityPoint());
+            }
+
+            let numberOfParticles = (canvas.height * canvas.width) / 10000;
+            for (let i = 0; i < numberOfParticles; i++) { particlesArray.push(new Particle()); }
         }
 
         function animateParticles() {
             requestAnimationFrame(animateParticles);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            gravityPoints.forEach(gp => gp.update());
+            particlesArray.forEach(p => p.isConnected = false);
 
             for (let i = 0; i < particlesArray.length; i++) {
                 particlesArray[i].update();
@@ -315,19 +621,42 @@
                     const dx = particlesArray[i].x - particlesArray[j].x;
                     const dy = particlesArray[i].y - particlesArray[j].y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance < 100) {
+                    if (distance < 120) {
                         ctx.beginPath();
-                        ctx.strokeStyle = `rgba(255, 0, 0, ${0.15 - distance/800})`;
+                        ctx.strokeStyle = `rgba(255, 0, 0, ${0.2 - distance/600})`;
                         ctx.lineWidth = 0.5;
                         ctx.moveTo(particlesArray[i].x, particlesArray[i].y);
                         ctx.lineTo(particlesArray[j].x, particlesArray[j].y);
                         ctx.stroke();
+                        particlesArray[i].isConnected = true;
+                        particlesArray[j].isConnected = true;
                     }
+                }
+
+                let dx = mouse.x - particlesArray[i].x;
+                let dy = mouse.y - particlesArray[i].y;
+                let distance = Math.sqrt(dx*dx + dy*dy);
+                if (distance < mouse.radius) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(255, 0, 0, ${0.3 - distance/mouse.radius * 0.3})`;
+                    ctx.lineWidth = 0.8;
+                    ctx.moveTo(particlesArray[i].x, particlesArray[i].y);
+                    ctx.lineTo(mouse.x, mouse.y);
+                    ctx.stroke();
                 }
             }
         }
         initParticles();
         animateParticles();
+
+        // --- LIVE TIMESTAMP ---
+        function updateTime() {
+            const now = new Date();
+            const timeString = `[${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}]`;
+            const el = document.getElementById('current-time');
+            if(el) el.innerText = timeString;
+        }
+        setInterval(updateTime, 1000);
     </script>
 </body>
 </html>
