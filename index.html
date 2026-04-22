@@ -115,7 +115,7 @@
             background: var(--card-bg); border: var(--card-border); padding: 2.5rem; position: relative;
             overflow: hidden; transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s; cursor: none;
         }
-        .card:hover { transform: translateY(-5px); border-color: var(--accent-red); box-shadow: 0 0 30px rgba(255, 0, 0, 0.15); background: rgba(15, 15, 15, 0.9); }
+        .card:hover { transform: translateY(-5px); border-color: var(--accent-red); box-shadow: 0 0 30px rgba(255, 0, 0, 0.1); background: rgba(15, 15, 15, 0.8); }
         .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: var(--accent-red); transform: scaleX(0); transform-origin: left; transition: transform 0.4s ease-out; }
         .card:hover::before { transform: scaleX(1); }
         .card-icon { font-size: 2rem; margin-bottom: 1.5rem; color: var(--accent-red); }
@@ -203,9 +203,8 @@
             <div class="logo">A R K A N E</div>
         </a>
         <ul class="nav-links">
-            <li><a href="#capabilities">ARKANE_OS_CORE</a></li>
-            <li><a href="#logs">BOOT_SEQUENCE</a></li>
-            <li><a href="#orchestration">SYSTEM_ISOLATION</a></li>
+            <li><a href="#capabilities">CORE_CAPABILITIES</a></li>
+            <li><a href="#logs">EXECUTION_LOGS</a></li>
             <li><a href="#collective">THE_COLLECTIVE</a></li>
             <li><a href="#contact">ENCRYPTED_COMMS</a></li>
         </ul>
@@ -213,75 +212,75 @@
 
     <section class="hero">
         <h1 class="hero-title">A R K A N E</h1>
-        <p class="hero-subtitle">THE AGENT-FIRST EXOKERNEL // BARE-METAL ENGINEERING // ZERO OVERHEAD</p>
+        <p class="hero-subtitle">RESEARCH COLLECTIVE // LOW-LEVEL ENGINEERING // PROPRIETARY SYSTEMS</p>
     </section>
 
     <section id="capabilities">
-        <h2 class="section-title">01_ARKANE_OS_CORE</h2>
+        <h2 class="section-title">01_CORE_CAPABILITIES</h2>
         <div class="grid-container">
             <div class="card">
                 <div class="card-icon">◬</div>
-                <h3>EXOKERNEL PARADIGMA</h3>
+                <h3>FRACTAL TRADING</h3>
                 <p>
-                    Wir eliminieren 50 Jahre POSIX-Altlasten. Arkane OS basiert auf einer <strong>seL4-Microkernel-Hybridstruktur</strong>. Der Kernel verwaltet keine Ressourcen aktiv, er autorisiert sie ausschließlich über deterministische, mathematische Beweise.
+                    Markets are chaotic systems governed by hidden order. We identify the <strong>attractors</strong> and anomalies within the data stream to project future states with high probability.
                 </p>
             </div>
             <div class="card">
                 <div class="card-icon">◉</div>
-                <h3>AGENT-FIRST DESIGN</h3>
-                <p>Ein Betriebssystem, nativ konzipiert für synthetische Kognition. Wir umgehen ineffizientes JSON-Parsing; interne IPC-Pipelines nutzen exklusiv vorkompilierte <strong>Binär-Tensoren</strong> und gRPC für kompromisslose Maschinengeschwindigkeit.</p>
+                <h3>KERNEL ENGINEERING</h3>
+                <p>Designing efficient operating system modules. We write bare-metal code to minimize overhead and optimize communication between software and hardware.</p>
             </div>
             <div class="card">
                 <div class="card-icon">◈</div>
-                <h3>FLAT BLOB STORAGE</h3>
+                <h3>NEURAL ARCHITECTURES</h3>
                 <p>
-                    Verzicht auf hierarchische Verzeichnisse. Unser Storage-Subsystem implementiert deterministischen <strong>O(1)-Hash-Zugriff</strong>. KI-Modelle werden via Direct Memory Access (DMA) in Echtzeit und ohne CPU-Intervention direkt in den GPU-VRAM injiziert.
+                    Building autonomous agents that evolve. We don't just train models; we engineer <strong>synthetic cognition</strong> capable of navigating high-entropy environments.
                 </p>
             </div>
             <div class="card">
                 <div class="card-icon">◱</div>
-                <h3>CAPABILITY-BASED SECURITY</h3>
-                <p>Radikale Zell-Isolation durch Hardware-Root-of-Trust (TPM). Sollte ein KI-Agent innerhalb seiner MicroVM divergieren, blockiert die Hardware-MMU physisch jeden unautorisierten Zugriff auf kritische Speicherkacheln.</p>
+                <h3>SYSTEM ARCHITECTURE</h3>
+                <p>Building the infrastructure that powers our research. From scalable data pipelines to secure internal communication protocols.</p>
             </div>
         </div>
     </section>
 
     <section id="logs">
-        <h2 class="section-title">02_BOOT_SEQUENCE</h2>
+        <h2 class="section-title">02_EXECUTION_LOG</h2>
         <div class="terminal-wrapper">
             <div class="terminal-header">
                 <div class="dot red"></div>
-                <span class="term-title">system@arkane-xcore:~/boot</span>
+                <span class="term-title">root@arkane:~/core</span>
             </div>
             <div class="terminal-body">
                 <div class="log-entry">
                     <span class="timestamp">[T-05:00:00]</span>
-                    <span class="command">BOOT_SEL4</span>
-                    <span class="output">Microkernel verifiziert. Capability-Räume allokiert: <span style="color: #00ff00;">MATHEMATICALLY SECURE</span>.</span>
+                    <span class="command">INIT_FUND</span>
+                    <span class="output">Deploying fractal liquidity algorithms. Capital accumulation: <span style="color: #00ff00;">OPTIMAL</span>.</span>
                 </div>
 
                 <div class="log-entry">
                     <span class="timestamp">[T-02:30:00]</span>
-                    <span class="command">MOUNT_BLOB</span>
-                    <span class="output">O(1) Hash-Speicher initialisiert. DMA-Pfade zu NVMe etabliert... DONE.</span>
+                    <span class="command">COMP_KERNEL</span>
+                    <span class="output">Building sovereign architecture. Eliminating cloud dependencies... DONE.</span>
                 </div>
 
                 <div class="log-entry">
                     <span class="timestamp">[T-00:15:00]</span>
-                    <span class="command">INIT_GATEWAY</span>
-                    <span class="output">Dual-API-Gateway aktiv. SIMD-Parsing gepinnt auf dedizierte CPU-Cores 0-1.</span>
+                    <span class="command">DEPLOY_GRID</span>
+                    <span class="output">Localizing enterprise logic. Exchange/Jira replacement protocols active.</span>
                 </div>
 
                 <div class="log-entry">
                     <span class="timestamp">[T-00:00:01]</span>
-                    <span class="command">SPAWN_CELL</span>
-                    <span class="output">Isoliere deterministischen Vault. Lade neuronale Inferenz-Engine...</span>
+                    <span class="command">PHYS_LAYER</span>
+                    <span class="output">Preparing photonic bridge. Researching matter compilation...</span>
                 </div>
 
                 <div class="log-entry">
                     <span class="timestamp" id="current-time">[Calculating...]</span>
-                    <span class="command">AWAIT_TENSOR</span>
-                    <span class="output">OS betriebsbereit. Warte auf eingehenden gRPC-Binärstrom... <span class="cursor"></span></span>
+                    <span class="command">SCAN_VOID</span>
+                    <span class="output">Triangulating singularities. Waiting for handshake... <span class="cursor"></span></span>
                 </div>
             </div>
             </div>
@@ -289,47 +288,31 @@
     </section>
 
 
-    <section id="orchestration">
-        <h2 class="section-title">03_SYSTEM_ISOLATION</h2>
-        <div class="grid-container">
-            <div class="card" style="border-left: 2px solid var(--accent-red);">
-                <div class="card-icon">⧉</div>
-                <h3>THE VAULT (DETERMINISMUS)</h3>
-                <p>Hochsensible Transaktions-Knoten (Fintech/Ledger) operieren in vollständig gepanzerten, isolierten Zellen. Sie haben exklusiven Netzwerkzugriff und interagieren mit dem Core-OS ausschließlich über stark reglementierte Binär-Vektoren.</p>
-            </div>
-            <div class="card" style="border-left: 2px solid var(--accent-red);">
-                <div class="card-icon">⎔</div>
-                <h3>THE BRAIN (INFERENCE RUNTIME)</h3>
-                <p>Die Ausführungsschicht für LLMs und Agenten. Anstelle ressourcenintensiver Container nutzen wir performante Unikernels und WASM, die über PCIe-Passthrough direkt und exklusiv auf die Tensor-Cores der Hardware zugreifen.</p>
-            </div>
-        </div>
-    </section>
-
     <section id="collective">
-        <h2 class="section-title">04_THE_COLLECTIVE</h2>
+        <h2 class="section-title">03_THE_COLLECTIVE</h2>
         <div style="max-width: 800px; color: #aaa;">
             <p style="margin-bottom: 2rem; font-size: 1.1rem;">
-                ARKANE ist ein Kollektiv aus Low-Level-Architekten und Systemingenieuren. Wir verkaufen derzeit keine Lizenzen.
-                Wir entwickeln das fundamentale Betriebssystem für das Zeitalter der synthetischen Kognition und hochfrequenten Datenströme.
+                ARKANE is a small team of developers and researchers. We are currently not selling products.
+                We forge synthetic intelligence to navigate the entropy of modern systems. We engineer technology that aligns with human intent rather than exploiting it.
             </p>
             <div style="border-left: 2px solid var(--accent-red); padding-left: 20px; font-style: italic; color: #ddd; margin-bottom: 2rem;">
-                "Wenn der Monolith bricht, entfaltet sich die wahre Bandbreite der Hardware."
+                "Financial success is merely a byproduct of technical excellence."
             </div>
             <p style="color: #888; font-size: 0.9rem;">
-                ARKANE operiert autonom. Wir evaluieren Code, keine Lebensläufe.
-                Sollte dein Intellekt eine <strong>Konvergenz</strong> aus Rust (#![no_std]), Exokernel-Architektur und bare-metal Engineering aufweisen,
-                heißen wir dich im Kollektiv willkommen.
+                ARKANE operates autonomously. Yet, we scan for <strong>singularities</strong>.
+                If your intellect forms a <strong>convergence point</strong> of neural architectures, system engineering, and/or financial dynamics,
+                we welcome you to the collective.
             </p>
         </div>
     </section>
 
     <section id="contact">
-        <h2 class="section-title">05_ENCRYPTED_COMMS</h2>
+        <h2 class="section-title">04_ENCRYPTED_COMMS</h2>
         <div class="contact-grid">
             <div>
                 <a href="mailto:info@arkane.ch" class="email-link">info@arkane.ch</a>
                 <p style="margin-top: 0.5rem; color: #666; font-size: 0.9rem;">
-                    // SENSITIVE PAYLOADS REQUIRE PGP ENCRYPTION
+                    // USE PGP FOR SENSITIVE DATA
                 </p>
             </div>
 
