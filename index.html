@@ -216,31 +216,35 @@
     </section>
 
     <section id="capabilities">
-        <h2 class="section-title">01_CORE_CAPABILITIES</h2>
+        <h2 class="section-title">01_RESEARCH_VECTORS</h2>
         <div class="grid-container">
             <div class="card">
-                <div class="card-icon">◬</div>
-                <h3>OS FOR FINANCE</h3>
+                <div class="card-icon">◉</div>
+                <h3>ARKANE OS</h3>
                 <p>
-                    Arkane OS minimizes latency and maximizes throughput for high-frequency environments. By utilizing direct hardware tunneling, we eliminate OS-level bottlenecks, ensuring uncompromised security and deterministic performance for mission-critical trading operations.
+                    An exokernel for AI workloads. <strong>Cells</strong> replace processes — isolated address space, capability-bound, crash-contained. The kernel verifies identity at bind, then steps out of the data path. Written in Rust, <span style="color:#888;">no_std</span>, <span style="color:#888;">no_main</span>.
                 </p>
             </div>
             <div class="card">
-                <div class="card-icon">◉</div>
-                <h3>KERNEL ENGINEERING</h3>
-                <p>Designing modular OS components via our Exokernel approach. By removing unnecessary kernel-space management, we provide databases and AI workloads with direct access to hardware, resulting in significantly higher performance compared to monolithic legacy systems.</p>
+                <div class="card-icon">◬</div>
+                <h3>HARDWARE</h3>
+                <p>
+                    Low-latency interconnects, IOMMU primitives, FPGA prototyping for capability enforcement at the silicon boundary. Target: deterministic paths from NIC to cell with the kernel out of the loop. Bring-up work across <span style="color:#888;">x86_64</span>, <span style="color:#888;">aarch64</span>, <span style="color:#888;">power</span>.
+                </p>
             </div>
             <div class="card">
                 <div class="card-icon">◈</div>
-                <h3>NEURAL ARCHITECTURES</h3>
+                <h3>SYNTHETIC AGENTS</h3>
                 <p>
-                    Building autonomous agents that evolve. We don't just train models; we engineer <strong>synthetic cognition</strong> capable of navigating high-entropy environments. Our AI builds, tests, and deploys agents in real-time.
+                    Long-horizon agents executing inside capability sandboxes. Every syscall is a token, every effect is auditable. We are more interested in <strong>reliable autonomy</strong> than leaderboard scores — agents that can be trusted with real authority.
                 </p>
             </div>
             <div class="card">
                 <div class="card-icon">◱</div>
-                <h3>SYSTEM ARCHITECTURE</h3>
-                <p>Powered by our Exokernel and LibOS paradigm. We leverage flattened blob storage, hardware-native efficiency, and hybrid compatibility layers to deliver an infrastructure that allows applications direct, zero-overhead access to computational resources.</p>
+                <h3>CAPITAL</h3>
+                <p>
+                    Self-funded. Algorithmic strategies run on top of our own stack — no shared dependencies with public cloud, no third-party risk in the data path. Capital is the substrate for research, not the objective.
+                </p>
             </div>
         </div>
     </section>
@@ -254,33 +258,63 @@
             </div>
             <div class="terminal-body">
                 <div class="log-entry">
-                    <span class="timestamp">[T-05:00:00]</span>
-                    <span class="command">INIT_FUND</span>
-                    <span class="output">Deploying fractal liquidity algorithms. Capital accumulation: <span style="color: #00ff00;">OPTIMAL</span>.</span>
+                    <span class="timestamp">[BOOT]</span>
+                    <span class="command">UART</span>
+                    <span class="output">uart_16550 // serial out armed &nbsp;<span style="color: #00ff00;">OK</span></span>
                 </div>
 
                 <div class="log-entry">
-                    <span class="timestamp">[T-02:30:00]</span>
-                    <span class="command">COMP_KERNEL</span>
-                    <span class="output">Building sovereign architecture. Eliminating cloud dependencies... DONE.</span>
+                    <span class="timestamp">[BOOT]</span>
+                    <span class="command">GDT/IDT</span>
+                    <span class="output">descriptor tables + 32 exception handlers &nbsp;<span style="color: #00ff00;">OK</span></span>
                 </div>
 
                 <div class="log-entry">
-                    <span class="timestamp">[T-00:15:00]</span>
-                    <span class="command">DEPLOY_GRID</span>
-                    <span class="output">Localizing enterprise logic. Exchange/Jira replacement protocols active.</span>
+                    <span class="timestamp">[MEM]</span>
+                    <span class="command">FRAME</span>
+                    <span class="output">physical allocator: 8192 pages mapped &nbsp;<span style="color: #00ff00;">OK</span></span>
                 </div>
 
                 <div class="log-entry">
-                    <span class="timestamp">[T-00:00:01]</span>
-                    <span class="command">PHYS_LAYER</span>
-                    <span class="output">Preparing photonic bridge. Researching matter compilation...</span>
+                    <span class="timestamp">[CAP]</span>
+                    <span class="command">TABLE</span>
+                    <span class="output">capability_table[64] initialized &nbsp;<span style="color: #00ff00;">OK</span></span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp">[CELL]</span>
+                    <span class="command">SPAWN</span>
+                    <span class="output">cell_a // pid=1 &nbsp;<span style="color: #00ff00;">OK</span></span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp">[CELL]</span>
+                    <span class="command">SPAWN</span>
+                    <span class="output">cell_b // pid=2 &nbsp;<span style="color: #00ff00;">OK</span></span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp">[FAULT]</span>
+                    <span class="command">RECOVER</span>
+                    <span class="output">cell_a: page_fault @ 0x0 → isolation held &nbsp;<span style="color: #00ff00;">RECOVERED</span></span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp">[CELL]</span>
+                    <span class="command">LIVE</span>
+                    <span class="output">cell_b uninterrupted // crash containment <span style="color: #00ff00;">PROVEN</span></span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp">[SCHED]</span>
+                    <span class="command">RR/100HZ</span>
+                    <span class="output">round-robin scheduler armed &nbsp;<span style="color: #00ff00;">OK</span></span>
                 </div>
 
                 <div class="log-entry">
                     <span class="timestamp" id="current-time">[Calculating...]</span>
-                    <span class="command">SCAN_VOID</span>
-                    <span class="output">Triangulating singularities. Waiting for handshake... <span class="cursor"></span></span>
+                    <span class="command">PHASE-4</span>
+                    <span class="output">ring-3 userspace + per-cell PML4 // awaiting handshake <span class="cursor"></span></span>
                 </div>
             </div>
             </div>
