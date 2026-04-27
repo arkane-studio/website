@@ -184,6 +184,100 @@
         .email-link { color: var(--accent-red); text-decoration: none; font-size: 1.5rem; letter-spacing: 2px; transition: all 0.3s; display: inline-block; margin-bottom: 1rem; cursor: none; }
         .email-link:hover { text-shadow: 0 0 15px rgba(255, 0, 0, 0.8); color: #fff; transform: translateX(10px); }
 
+        /* --- TRAJECTORY (PHASE TIMELINE) --- */
+        .trajectory {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            gap: 0.5rem; max-width: 1000px; margin: 0 auto; position: relative;
+            padding: 1rem 0;
+        }
+        .phase {
+            flex: 1; display: flex; flex-direction: column; align-items: center;
+            position: relative; min-width: 0;
+        }
+        .phase-dot {
+            width: 18px; height: 18px; border-radius: 50%;
+            border: 1px solid #333; background: #0a0a0a;
+            position: relative; z-index: 2; transition: all 0.3s;
+        }
+        .phase.done .phase-dot {
+            background: var(--accent-red); border-color: var(--accent-red);
+            box-shadow: 0 0 12px rgba(255, 0, 0, 0.5);
+        }
+        .phase.active .phase-dot {
+            background: transparent; border-color: var(--accent-red);
+            animation: pulse 1.6s ease-in-out infinite;
+        }
+        .phase.active .phase-dot::after {
+            content: ''; position: absolute; inset: 4px; border-radius: 50%;
+            background: var(--accent-red); box-shadow: 0 0 10px var(--accent-red);
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.6); }
+            50%      { box-shadow: 0 0 0 8px rgba(255, 0, 0, 0); }
+        }
+        .phase-label {
+            margin-top: 0.8rem; font-size: 0.7rem; letter-spacing: 0.15rem;
+            color: var(--text-dim); text-transform: uppercase; text-align: center;
+        }
+        .phase.done .phase-label { color: #ccc; }
+        .phase.active .phase-label { color: var(--accent-red); }
+        .phase-num {
+            font-size: 0.6rem; color: #444; margin-bottom: 0.3rem;
+            letter-spacing: 0.1rem;
+        }
+        .trajectory::before {
+            content: ''; position: absolute; top: calc(1rem + 0.6rem + 8px);
+            left: 5%; right: 5%; height: 1px; background: #222; z-index: 1;
+        }
+        @media (max-width: 768px) {
+            .trajectory { flex-wrap: wrap; gap: 1.5rem; }
+            .trajectory::before { display: none; }
+            .phase { flex: 0 0 calc(33% - 1rem); }
+        }
+
+        /* --- ARKCTL EASTER EGG TERMINAL --- */
+        .arkctl-overlay {
+            position: fixed; inset: 0; z-index: 10000;
+            background: rgba(0, 0, 0, 0.88);
+            display: flex; align-items: center; justify-content: center;
+            padding: 2rem; backdrop-filter: blur(2px);
+        }
+        .arkctl-overlay.hidden { display: none; }
+        .arkctl-modal {
+            width: min(820px, 100%); height: min(520px, 90vh);
+            background: rgba(5, 5, 5, 0.97); border: 1px solid var(--accent-red);
+            box-shadow: 0 0 60px rgba(255, 0, 0, 0.25);
+            display: flex; flex-direction: column;
+        }
+        .arkctl-modal .terminal-header { justify-content: flex-start; }
+        .arkctl-close {
+            background: transparent; border: none; color: #666; cursor: none;
+            font-family: var(--font-tech); margin-left: auto; font-size: 0.75rem;
+            letter-spacing: 0.1rem;
+        }
+        .arkctl-close:hover { color: var(--accent-red); }
+        .arkctl-body {
+            flex: 1; padding: 1.5rem; font-family: var(--font-tech); font-size: 0.85rem;
+            color: #ccc; overflow-y: auto; line-height: 1.6; white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .arkctl-body .line-cmd { color: var(--accent-red); }
+        .arkctl-body .line-out { color: #aaa; }
+        .arkctl-body .line-err { color: #ff5555; }
+        .arkctl-body .line-ok  { color: #00ff00; }
+        .arkctl-body::-webkit-scrollbar { width: 6px; }
+        .arkctl-body::-webkit-scrollbar-thumb { background: #333; }
+        .arkctl-input-row {
+            display: flex; gap: 0.6rem; padding: 0.8rem 1.5rem;
+            border-top: 1px solid #222; align-items: center;
+        }
+        .arkctl-prompt { color: var(--accent-red); font-weight: bold; font-family: var(--font-tech); }
+        #arkctl-input {
+            flex: 1; background: transparent; border: none; outline: none;
+            color: #fff; font-family: var(--font-tech); font-size: 0.9rem;
+            caret-color: var(--accent-red); cursor: none;
+        }
+
         footer { background: transparent; padding: 3rem; text-align: center; border-top: 1px solid #111; font-size: 0.8rem; color: #444; }
 
         @keyframes glitch-skew { 0% { transform: skew(0deg); } 20% { transform: skew(-2deg); } 40% { transform: skew(2deg); } 60% { transform: skew(0deg); } 80% { transform: skew(1deg); } 100% { transform: skew(0deg); } }
@@ -203,10 +297,11 @@
             <div class="logo">A R K A N E</div>
         </a>
         <ul class="nav-links">
-            <li><a href="#capabilities">CORE_CAPABILITIES</a></li>
-            <li><a href="#logs">EXECUTION_LOGS</a></li>
-            <li><a href="#collective">THE_COLLECTIVE</a></li>
-            <li><a href="#contact">ENCRYPTED_COMMS</a></li>
+            <li><a href="#capabilities">VECTORS</a></li>
+            <li><a href="#logs">EXEC_LOG</a></li>
+            <li><a href="#trajectory">TRAJECTORY</a></li>
+            <li><a href="#collective">COLLECTIVE</a></li>
+            <li><a href="#contact">COMMS</a></li>
         </ul>
     </nav>
 
@@ -229,7 +324,7 @@
                 <div class="card-icon">◬</div>
                 <h3>HARDWARE</h3>
                 <p>
-                    Low-latency interconnects, IOMMU primitives, FPGA prototyping for capability enforcement at the silicon boundary. Target: deterministic paths from NIC to cell with the kernel out of the loop. Bring-up work across <span style="color:#888;">x86_64</span>, <span style="color:#888;">aarch64</span>, <span style="color:#888;">power</span>.
+                    Low-latency interconnects, IOMMU primitives, FPGA prototyping for capability enforcement at the silicon boundary. Target: deterministic paths from NIC to cell with the kernel out of the loop. Bring-up work across <span style="color:#888;">x86_64</span>, <span style="color:#888;">arm64</span>, <span style="color:#888;">ppc64</span>.
                 </p>
             </div>
             <div class="card">
@@ -312,9 +407,21 @@
                 </div>
 
                 <div class="log-entry">
+                    <span class="timestamp">[VM]</span>
+                    <span class="command">PML4</span>
+                    <span class="output">per-cell page tables // ring-3 userspace &nbsp;<span style="color: #00ff00;">OK</span></span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp">[CAP]</span>
+                    <span class="command">ED25519</span>
+                    <span class="output">signed capability tokens // unforgeable &nbsp;<span style="color: #00ff00;">OK</span></span>
+                </div>
+
+                <div class="log-entry">
                     <span class="timestamp" id="current-time">[Calculating...]</span>
-                    <span class="command">PHASE-4</span>
-                    <span class="output">ring-3 userspace + per-cell PML4 // awaiting handshake <span class="cursor"></span></span>
+                    <span class="command">PHASE-5</span>
+                    <span class="output">virtio-net + NVMe via IOMMU // arming <span class="cursor"></span></span>
                 </div>
             </div>
             </div>
@@ -322,8 +429,50 @@
     </section>
 
 
+    <section id="trajectory">
+        <h2 class="section-title">03_TRAJECTORY</h2>
+        <div class="trajectory">
+            <div class="phase done">
+                <div class="phase-num">01</div>
+                <div class="phase-dot"></div>
+                <div class="phase-label">Boot</div>
+            </div>
+            <div class="phase done">
+                <div class="phase-num">02</div>
+                <div class="phase-dot"></div>
+                <div class="phase-label">Kernel</div>
+            </div>
+            <div class="phase done">
+                <div class="phase-num">03</div>
+                <div class="phase-dot"></div>
+                <div class="phase-label">Isolation</div>
+            </div>
+            <div class="phase done">
+                <div class="phase-num">04</div>
+                <div class="phase-dot"></div>
+                <div class="phase-label">Address Space</div>
+            </div>
+            <div class="phase active">
+                <div class="phase-num">05</div>
+                <div class="phase-dot"></div>
+                <div class="phase-label">I/O &amp; Net</div>
+            </div>
+            <div class="phase">
+                <div class="phase-num">06</div>
+                <div class="phase-dot"></div>
+                <div class="phase-label">Gateways</div>
+            </div>
+            <div class="phase">
+                <div class="phase-num">07</div>
+                <div class="phase-dot"></div>
+                <div class="phase-label">Production</div>
+            </div>
+        </div>
+    </section>
+
+
     <section id="collective">
-        <h2 class="section-title">03_THE_COLLECTIVE</h2>
+        <h2 class="section-title">04_THE_COLLECTIVE</h2>
         <div style="max-width: 800px; color: #aaa;">
             <p style="margin-bottom: 2rem; font-size: 1.1rem;">
                 ARKANE is a small team of developers and researchers. We are currently not selling products.
@@ -341,7 +490,7 @@
     </section>
 
     <section id="contact">
-        <h2 class="section-title">04_ENCRYPTED_COMMS</h2>
+        <h2 class="section-title">05_ENCRYPTED_COMMS</h2>
         <div class="contact-grid">
             <div>
                 <a href="mailto:info@arkane.ch" class="email-link">info@arkane.ch</a>
@@ -417,6 +566,21 @@ fx2+vnkfp0C9PU7wjqqW+L+v/mKTDXq1C5GifKCEcgCWLFEuOUygoKMZyvIkU447
         <p>A R K A N E &copy; 2026</p>
         <p style="opacity: 0.4; margin-top: 0.5rem; font-size: 0.7rem;">NO TRACKING // NO COOKIES // JUST HTML</p>
     </footer>
+
+    <div id="arkctl-overlay" class="arkctl-overlay hidden" aria-hidden="true">
+        <div class="arkctl-modal">
+            <div class="terminal-header">
+                <div class="dot red"></div>
+                <span class="term-title">arkctl // local cell // v0.1.0</span>
+                <button class="arkctl-close" onclick="closeArkctl()">[ ESC TO CLOSE ]</button>
+            </div>
+            <div id="arkctl-output" class="arkctl-body"></div>
+            <div class="arkctl-input-row">
+                <span class="arkctl-prompt">arkctl&gt;</span>
+                <input id="arkctl-input" autocomplete="off" spellcheck="false" autocapitalize="off" />
+            </div>
+        </div>
+    </div>
 
     <script>
         // --- CUSTOM CURSOR LOGIC ---
@@ -667,6 +831,180 @@ fx2+vnkfp0C9PU7wjqqW+L+v/mKTDXq1C5GifKCEcgCWLFEuOUygoKMZyvIkU447
             if(el) el.innerText = timeString;
         }
         setInterval(updateTime, 1000);
+
+        // --- ARKCTL EASTER EGG TERMINAL ---
+        const pageLoad = Date.now();
+        const arkctlOverlay = document.getElementById('arkctl-overlay');
+        const arkctlInput   = document.getElementById('arkctl-input');
+        const arkctlOutput  = document.getElementById('arkctl-output');
+        let triggerBuffer = '';
+        let konami = [];
+        const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+        const history = []; let histIdx = -1;
+
+        function fmtUptime() {
+            const s = Math.floor((Date.now() - pageLoad) / 1000);
+            const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+            return `${h}h ${String(m).padStart(2,'0')}m ${String(r).padStart(2,'0')}s`;
+        }
+
+        function arkctlPrint(lines, cls = 'line-out') {
+            const arr = Array.isArray(lines) ? lines : [lines];
+            for (const l of arr) {
+                const div = document.createElement('div');
+                div.className = cls;
+                div.textContent = l;
+                arkctlOutput.appendChild(div);
+            }
+            arkctlOutput.scrollTop = arkctlOutput.scrollHeight;
+        }
+
+        function arkctlEcho(cmd) {
+            const div = document.createElement('div');
+            div.className = 'line-cmd';
+            div.textContent = `arkctl> ${cmd}`;
+            arkctlOutput.appendChild(div);
+        }
+
+        const COMMANDS = {
+            help: () => arkctlPrint([
+                'available commands:',
+                '  cell list              list active cells',
+                '  cell info <name>       inspect a cell',
+                '  cap show               list issued capabilities',
+                '  phase                  build phase status',
+                '  status                 kernel summary',
+                '  whoami                 identity',
+                '  clear                  clear screen',
+                '  exit                   close terminal',
+            ]),
+            'cell list': () => arkctlPrint([
+                'NAME          STATE       PID    CAPS',
+                'cell_a        running       1    [mem, ipc:0]',
+                'cell_b        running       2    [mem, ipc:0, ipc:1]',
+                'gw-egress     running       3    [net.outbound, mem]',
+            ]),
+            'cap show': () => arkctlPrint([
+                'capability_table[64] // 11 active // ed25519',
+                '  0x01  mem.frame[0..8192]      verified',
+                '  0x02  ipc.channel[0]          verified',
+                '  0x03  ipc.channel[1]          verified',
+                '  0x07  net.outbound            verified',
+                '  0x08  net.target.0.0.0.0/0    revoked',
+                '  ...',
+            ]),
+            phase: () => {
+                arkctlPrint([
+                    'phase-1  boot                 [DONE]',
+                    'phase-2  kernel base          [DONE]',
+                    'phase-3  cells & isolation    [DONE]',
+                    'phase-4  address space        [DONE]',
+                ], 'line-ok');
+                arkctlPrint(['phase-5  i/o & network        [ACTIVE]'], 'line-cmd');
+                arkctlPrint([
+                    'phase-6  gateways             [PLANNED]',
+                    'phase-7  production           [PLANNED]',
+                ]);
+            },
+            status: () => arkctlPrint([
+                'arkane kernel // x86_64 // phase-5',
+                `  uptime         ${fmtUptime()}`,
+                '  cells          3 running',
+                '  caps issued    11',
+                '  faults         1 (recovered)',
+                '  scheduler      round-robin // 100hz',
+                '  vip            verify-once-then-pass-through',
+            ]),
+            whoami: () => arkctlPrint(['arkane // research collective']),
+        };
+
+        function runCommand(raw) {
+            const cmd = raw.trim();
+            if (!cmd) return;
+            arkctlEcho(cmd);
+            history.push(cmd); histIdx = history.length;
+
+            if (cmd === 'clear' || cmd === 'cls') { arkctlOutput.innerHTML = ''; return; }
+            if (cmd === 'exit' || cmd === 'quit') { closeArkctl(); return; }
+
+            if (COMMANDS[cmd]) { COMMANDS[cmd](); return; }
+
+            if (cmd.startsWith('cell info ')) {
+                const name = cmd.slice(10).trim();
+                const cells = {
+                    cell_a:    ['cell_a', 'pid=1', 'state=running', 'caps=[mem, ipc:0]', 'crashes=1 (recovered)'],
+                    cell_b:    ['cell_b', 'pid=2', 'state=running', 'caps=[mem, ipc:0, ipc:1]', 'crashes=0'],
+                    'gw-egress': ['gw-egress', 'pid=3', 'state=running', 'caps=[net.outbound, mem]', 'crashes=0'],
+                };
+                if (cells[name]) arkctlPrint(cells[name]);
+                else arkctlPrint([`cell '${name}' not found. try: cell list`], 'line-err');
+                return;
+            }
+
+            arkctlPrint([`unknown command: '${cmd}'. type 'help'.`], 'line-err');
+        }
+
+        function openArkctl() {
+            arkctlOverlay.classList.remove('hidden');
+            arkctlOverlay.setAttribute('aria-hidden', 'false');
+            if (arkctlOutput.childElementCount === 0) {
+                arkctlPrint([
+                    'arkane control // local cell // v0.1.0',
+                    'connected via uds // ed25519: bound',
+                    "type 'help' for commands. esc to disconnect.",
+                    '',
+                ]);
+            }
+            setTimeout(() => arkctlInput.focus(), 50);
+        }
+        function closeArkctl() {
+            arkctlOverlay.classList.add('hidden');
+            arkctlOverlay.setAttribute('aria-hidden', 'true');
+            arkctlInput.blur();
+        }
+        window.closeArkctl = closeArkctl;
+
+        document.addEventListener('keydown', (e) => {
+            // Konami sequence
+            konami.push(e.key);
+            if (konami.length > KONAMI.length) konami.shift();
+            if (konami.length === KONAMI.length && konami.every((k, i) => k.toLowerCase() === KONAMI[i].toLowerCase())) {
+                konami = []; openArkctl(); return;
+            }
+
+            // ESC closes
+            if (e.key === 'Escape' && !arkctlOverlay.classList.contains('hidden')) {
+                closeArkctl(); return;
+            }
+
+            // 'arkctl' typed anywhere outside an input
+            if (document.activeElement === arkctlInput) return;
+            if (e.key.length === 1 && /[a-z]/i.test(e.key)) {
+                triggerBuffer = (triggerBuffer + e.key).toLowerCase().slice(-12);
+                if (triggerBuffer.endsWith('arkctl')) {
+                    triggerBuffer = '';
+                    openArkctl();
+                }
+            }
+        });
+
+        arkctlInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                runCommand(arkctlInput.value);
+                arkctlInput.value = '';
+            } else if (e.key === 'ArrowUp') {
+                if (histIdx > 0) { histIdx--; arkctlInput.value = history[histIdx] || ''; }
+                e.preventDefault();
+            } else if (e.key === 'ArrowDown') {
+                if (histIdx < history.length - 1) { histIdx++; arkctlInput.value = history[histIdx] || ''; }
+                else { histIdx = history.length; arkctlInput.value = ''; }
+                e.preventDefault();
+            }
+        });
+
+        arkctlOverlay.addEventListener('click', (e) => {
+            if (e.target === arkctlOverlay) closeArkctl();
+        });
     </script>
 </body>
 </html>
