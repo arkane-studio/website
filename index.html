@@ -333,6 +333,88 @@
 
         @keyframes glitch-skew { 0% { transform: skew(0deg); } 20% { transform: skew(-2deg); } 40% { transform: skew(2deg); } 60% { transform: skew(0deg); } 80% { transform: skew(1deg); } 100% { transform: skew(0deg); } }
         @media (max-width: 768px) { nav { padding: 1rem; flex-direction: column; gap: 1rem; position: relative; background: rgba(5,5,5,0.9); } .nav-links { flex-wrap: wrap; justify-content: center; gap: 1rem; } .hero-title { font-size: 3.5rem; } }
+
+        /* --- BOOT SEQUENCE --- */
+        .boot-hidden { opacity: 0 !important; }
+
+        /* --- HERO TELEMETRY BAR --- */
+        .hero-stats {
+            margin-top: 2.5rem;
+            font-size: 0.7rem;
+            letter-spacing: 0.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.7rem;
+            flex-wrap: wrap;
+            font-family: var(--font-tech);
+        }
+        .stat-pulse {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: #00ff00;
+            box-shadow: 0 0 8px #00ff00;
+            display: inline-block;
+            animation: stat-blink 2s ease-in-out infinite;
+        }
+        @keyframes stat-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .stat-label { color: #666; }
+        .stat-value {
+            color: var(--accent-red);
+            text-shadow: 0 0 6px rgba(255, 0, 0, 0.4);
+        }
+        .stat-sep { color: #333; }
+
+        /* --- ARKCTL LAUNCHER --- */
+        .arkctl-launcher {
+            text-align: center;
+            margin-top: 3rem;
+        }
+        .arkctl-launch-btn {
+            background: rgba(15, 5, 5, 0.6);
+            border: 1px solid var(--accent-red);
+            color: #fff;
+            font-family: var(--font-tech);
+            font-size: 0.9rem;
+            letter-spacing: 0.2rem;
+            padding: 1rem 2rem;
+            cursor: none;
+            text-transform: uppercase;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+        .arkctl-launch-btn:hover {
+            background: var(--accent-red);
+            color: #000;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+            transform: translateY(-2px);
+        }
+        .arkctl-launch-btn:hover .launch-prompt { color: #000; }
+        .arkctl-launch-btn:hover .launch-cursor { background: #000; }
+        .launch-prompt {
+            color: var(--accent-red);
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+        .launch-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background: var(--accent-red);
+            animation: blink 1s infinite;
+            vertical-align: middle;
+            transition: background 0.3s;
+        }
+        .arkctl-hint {
+            margin-top: 1.2rem;
+            font-size: 0.7rem;
+            color: #444;
+            letter-spacing: 0.1rem;
+        }
     </style>
 </head>
 <body>
@@ -360,6 +442,22 @@
     <section class="hero">
         <h1 class="hero-title">A R K A N E</h1>
         <p class="hero-subtitle">RESEARCH COLLECTIVE // LOW-LEVEL ENGINEERING // PROPRIETARY SYSTEMS</p>
+        <div class="hero-stats">
+            <span class="stat-pulse"></span>
+            <span class="stat-label">ONLINE</span>
+            <span class="stat-sep">·</span>
+            <span class="stat-label">PHASE</span>
+            <span class="stat-value">5/7</span>
+            <span class="stat-sep">·</span>
+            <span class="stat-value">3</span>
+            <span class="stat-label">CELLS</span>
+            <span class="stat-sep">·</span>
+            <span class="stat-label">UPTIME</span>
+            <span class="stat-value" id="telemetry-uptime">00:00:00</span>
+            <span class="stat-sep">·</span>
+            <span class="stat-value" id="telemetry-fps">60</span>
+            <span class="stat-label">FPS</span>
+        </div>
     </section>
 
     <section id="capabilities">
@@ -476,7 +574,15 @@
                     <span class="output">virtio-net + NVMe via IOMMU // arming <span class="cursor"></span></span>
                 </div>
             </div>
-            </div>
+        </div>
+
+        <div class="arkctl-launcher">
+            <button class="arkctl-launch-btn" onclick="openArkctl()">
+                <span class="launch-prompt">arkctl&gt;</span>
+                <span>CONNECT TO LIVE SHELL</span>
+                <span class="launch-cursor"></span>
+            </button>
+            <p class="arkctl-hint">// or type 'arkctl' anywhere · or ↑↑↓↓←→←→BA</p>
         </div>
     </section>
 
@@ -940,8 +1046,21 @@ fx2+vnkfp0C9PU7wjqqW+L+v/mKTDXq1C5GifKCEcgCWLFEuOUygoKMZyvIkU447
             for (let i = 0; i < numberOfParticles; i++) { particlesArray.push(new Particle()); }
         }
 
+        let fpsFrames = 0;
+        let fpsLast = performance.now();
+        let currentFps = 60;
+
         function animateParticles() {
             requestAnimationFrame(animateParticles);
+
+            fpsFrames++;
+            const _fpsNow = performance.now();
+            if (_fpsNow - fpsLast >= 1000) {
+                currentFps = fpsFrames;
+                fpsFrames = 0;
+                fpsLast = _fpsNow;
+            }
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             gravityPoints.forEach(gp => gp.update());
@@ -983,14 +1102,24 @@ fx2+vnkfp0C9PU7wjqqW+L+v/mKTDXq1C5GifKCEcgCWLFEuOUygoKMZyvIkU447
         initParticles();
         animateParticles();
 
-        // --- LIVE TIMESTAMP ---
-        function updateTime() {
+        // --- LIVE TELEMETRY (timestamp + uptime + fps) ---
+        function updateTelemetry() {
             const now = new Date();
             const timeString = `[${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}]`;
-            const el = document.getElementById('current-time');
-            if(el) el.innerText = timeString;
+            const tEl = document.getElementById('current-time');
+            if (tEl) tEl.innerText = timeString;
+
+            const upEl = document.getElementById('telemetry-uptime');
+            if (upEl) {
+                const s = Math.floor((Date.now() - pageLoad) / 1000);
+                const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+                upEl.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
+            }
+
+            const fpsEl = document.getElementById('telemetry-fps');
+            if (fpsEl) fpsEl.textContent = currentFps;
         }
-        setInterval(updateTime, 1000);
+        setInterval(updateTelemetry, 1000);
 
         // --- ARKCTL EASTER EGG TERMINAL ---
         const pageLoad = Date.now();
@@ -1167,6 +1296,37 @@ fx2+vnkfp0C9PU7wjqqW+L+v/mKTDXq1C5GifKCEcgCWLFEuOUygoKMZyvIkU447
         arkctlOverlay.addEventListener('click', (e) => {
             if (e.target === arkctlOverlay) closeArkctl();
         });
+
+        // --- LIVE BOOT SEQUENCE (FIRST VISIT ONLY · ?boot to replay) ---
+        (function bootSequence() {
+            const force = location.search.includes('boot');
+            if (!force && localStorage.getItem('arkane_first_boot_seen')) return;
+
+            const entries = document.querySelectorAll('.terminal-body .log-entry');
+            if (!entries.length) return;
+
+            entries.forEach(e => e.classList.add('boot-hidden'));
+
+            const reveal = () => {
+                let delay = 600;
+                entries.forEach((entry) => {
+                    if (entry.textContent.includes('FAULT')) delay += 500;
+                    setTimeout(() => entry.classList.remove('boot-hidden'), delay);
+                    delay += 160 + Math.random() * 240;
+                });
+                setTimeout(() => localStorage.setItem('arkane_first_boot_seen', '1'), delay);
+            };
+
+            const observer = new IntersectionObserver((iEntries) => {
+                iEntries.forEach(e => {
+                    if (e.isIntersecting) {
+                        reveal();
+                        observer.disconnect();
+                    }
+                });
+            }, { threshold: 0.4 });
+            observer.observe(entries[0]);
+        })();
     </script>
 </body>
 </html>
