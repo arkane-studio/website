@@ -447,7 +447,7 @@
             <span class="stat-label">ONLINE</span>
             <span class="stat-sep">·</span>
             <span class="stat-label">PHASE</span>
-            <span class="stat-value">5/7</span>
+            <span class="stat-value">3/7</span>
             <span class="stat-sep">·</span>
             <span class="stat-value">3</span>
             <span class="stat-label">CELLS</span>
@@ -527,6 +527,18 @@
                 </div>
 
                 <div class="log-entry">
+                    <span class="timestamp">[CAP]</span>
+                    <span class="command">CSPACE</span>
+                    <span class="output">per-cell cspaces armed // structural isolation &nbsp;<span style="color: #00ff00;">OK</span></span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp">[CPU]</span>
+                    <span class="command">SMEP/SMAP</span>
+                    <span class="output">CR4 bits set // ring-0 won't touch user pages &nbsp;<span style="color: #00ff00;">OK</span></span>
+                </div>
+
+                <div class="log-entry">
                     <span class="timestamp">[CELL]</span>
                     <span class="command">SPAWN</span>
                     <span class="output">cell_a // pid=1 &nbsp;<span style="color: #00ff00;">OK</span></span>
@@ -569,9 +581,21 @@
                 </div>
 
                 <div class="log-entry">
+                    <span class="timestamp">[CAP]</span>
+                    <span class="command">DELEGATE</span>
+                    <span class="output">monotonic // rights only reducible, never elevated &nbsp;<span style="color: #00ff00;">OK</span></span>
+                </div>
+
+                <div class="log-entry">
+                    <span class="timestamp">[CAP]</span>
+                    <span class="command">REVOKE</span>
+                    <span class="output">transitive // children purged on parent revoke &nbsp;<span style="color: #00ff00;">OK</span></span>
+                </div>
+
+                <div class="log-entry">
                     <span class="timestamp" id="current-time">[Calculating...]</span>
-                    <span class="command">PHASE-5</span>
-                    <span class="output">virtio-net + NVMe via IOMMU // arming <span class="cursor"></span></span>
+                    <span class="command">PHASE-3</span>
+                    <span class="output">.acf loader + virtio-blk // arming <span class="cursor"></span></span>
                 </div>
             </div>
         </div>
@@ -589,41 +613,47 @@
 
     <section id="trajectory">
         <h2 class="section-title">03_TRAJECTORY</h2>
+        <p style="text-align:center; max-width:840px; margin:0 auto 3rem; color:#bbb; font-size:0.95rem; line-height:1.7;">
+            Arkane OS Exokernel: ring-3 isolated cells with Ed25519 capability signing,
+            per-cell address spaces, and cryptographically-enforced delegation —
+            <span style="color:var(--accent-red);">running in QEMU</span>.
+            Network and storage in development.
+        </p>
         <div class="trajectory">
             <div class="phase done">
                 <div class="phase-num">01</div>
                 <div class="phase-dot"></div>
-                <div class="phase-label">Boot</div>
+                <div class="phase-label">Exokernel</div>
             </div>
             <div class="phase done">
                 <div class="phase-num">02</div>
                 <div class="phase-dot"></div>
-                <div class="phase-label">Kernel</div>
-            </div>
-            <div class="phase done">
-                <div class="phase-num">03</div>
-                <div class="phase-dot"></div>
-                <div class="phase-label">Isolation</div>
-            </div>
-            <div class="phase done">
-                <div class="phase-num">04</div>
-                <div class="phase-dot"></div>
-                <div class="phase-label">Address Space</div>
+                <div class="phase-label">Security</div>
             </div>
             <div class="phase active">
+                <div class="phase-num">03</div>
+                <div class="phase-dot"></div>
+                <div class="phase-label">Cell Loading</div>
+            </div>
+            <div class="phase">
+                <div class="phase-num">04</div>
+                <div class="phase-dot"></div>
+                <div class="phase-label">Network</div>
+            </div>
+            <div class="phase">
                 <div class="phase-num">05</div>
                 <div class="phase-dot"></div>
-                <div class="phase-label">I/O &amp; Net</div>
+                <div class="phase-label">Management</div>
             </div>
             <div class="phase">
                 <div class="phase-num">06</div>
                 <div class="phase-dot"></div>
-                <div class="phase-label">Gateways</div>
+                <div class="phase-label">AI Interface</div>
             </div>
             <div class="phase">
                 <div class="phase-num">07</div>
                 <div class="phase-dot"></div>
-                <div class="phase-label">Prototype</div>
+                <div class="phase-label">Production</div>
             </div>
         </div>
         <p style="text-align: center; max-width: 720px; margin: 2.5rem auto 0; color: #666; font-size: 0.8rem; line-height: 1.7;">
@@ -1184,15 +1214,15 @@ fx2+vnkfp0C9PU7wjqqW+L+v/mKTDXq1C5GifKCEcgCWLFEuOUygoKMZyvIkU447
             ]),
             phase: () => {
                 arkctlPrint([
-                    'phase-1  boot                 [DONE]',
-                    'phase-2  kernel base          [DONE]',
-                    'phase-3  cells & isolation    [DONE]',
-                    'phase-4  address space        [DONE]',
+                    'phase-1  exokernel            [DONE]',
+                    'phase-2  security             [DONE]',
                 ], 'line-ok');
-                arkctlPrint(['phase-5  i/o & network        [ACTIVE]'], 'line-cmd');
+                arkctlPrint(['phase-3  cell loading         [ACTIVE]'], 'line-cmd');
                 arkctlPrint([
-                    'phase-6  gateways             [PLANNED]',
-                    'phase-7  prototype            [PLANNED]',
+                    'phase-4  network              [PLANNED]',
+                    'phase-5  management           [PLANNED]',
+                    'phase-6  ai interface         [PLANNED]',
+                    'phase-7  production           [PLANNED]',
                     '',
                     '// production-grade lives many phases past 7. we are honest about this.',
                 ]);
