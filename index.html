@@ -415,6 +415,83 @@
             color: #444;
             letter-spacing: 0.1rem;
         }
+
+        /* --- MOBILE OPTIMIZATIONS --- */
+        @media (max-width: 768px) {
+            section { padding: 3.5rem 1.1rem; }
+            .section-title { font-size: 1.3rem; margin-bottom: 2rem; letter-spacing: 0.15rem; }
+
+            .hero { padding: 0 1rem; }
+            .hero-title { letter-spacing: 0.4rem; }
+            .hero-subtitle { font-size: 0.7rem; letter-spacing: 0.2rem; line-height: 1.5; }
+            .hero-stats {
+                margin-top: 1.8rem;
+                font-size: 0.6rem;
+                gap: 0.4rem 0.5rem;
+                letter-spacing: 0.12rem;
+            }
+
+            .grid-container { gap: 1.2rem; }
+            .card { padding: 1.6rem; }
+            .card h3 { font-size: 1rem; }
+            .card p { font-size: 0.85rem; }
+            .card-icon { font-size: 1.6rem; margin-bottom: 1rem; }
+
+            .terminal-body { padding: 1.2rem 0.9rem; }
+            .term-title { font-size: 0.7rem; }
+            .log-entry {
+                flex-wrap: wrap;
+                gap: 0.3rem 0.7rem;
+                margin-bottom: 0.7rem;
+            }
+            .timestamp { min-width: 0; font-size: 0.65rem; flex-shrink: 0; }
+            .command { min-width: 0; font-size: 0.7rem; flex-shrink: 0; }
+            .output { flex: 1 1 100%; font-size: 0.72rem; line-height: 1.5; }
+
+            .arkctl-launch-btn {
+                font-size: 0.78rem;
+                padding: 0.9rem 1.3rem;
+                letter-spacing: 0.12rem;
+            }
+            .arkctl-hint { font-size: 0.6rem; line-height: 1.6; }
+
+            .delta-foot { font-size: 0.7rem; line-height: 1.7; }
+
+            #collective p { font-size: 0.95rem !important; }
+
+            .email-link { font-size: 1.1rem; word-break: break-all; }
+            .pgp-container { font-size: 0.55rem; padding: 1rem; }
+            .pgp-header { font-size: 0.7rem; }
+            .copy-btn { padding: 4px 10px; font-size: 0.65rem; }
+
+            .arkctl-overlay { padding: 0.4rem; }
+            .arkctl-modal {
+                width: 100%;
+                height: 100%;
+                max-height: calc(100vh - 1rem);
+            }
+            .arkctl-body { padding: 1rem; font-size: 0.75rem; }
+            .arkctl-input-row { padding: 0.6rem 1rem; }
+            #arkctl-input { font-size: 0.85rem; }
+
+            nav { padding: 0.8rem 1rem; }
+            .nav-links { gap: 0.6rem 0.9rem; }
+            .nav-links a { font-size: 0.7rem; }
+
+            footer { padding: 2rem 1rem; }
+        }
+
+        @media (max-width: 480px) {
+            .hero-title { font-size: 2.5rem; letter-spacing: 0.25rem; }
+            .hero-subtitle { font-size: 0.62rem; letter-spacing: 0.15rem; }
+            .hero-stats { font-size: 0.55rem; gap: 0.3rem; }
+            .stat-sep { display: none; }
+            section { padding: 3rem 1rem; }
+            .section-title { font-size: 1.15rem; }
+            .terminal-body { padding: 1rem 0.7rem; }
+            .arkctl-launch-btn { padding: 0.75rem 1rem; font-size: 0.7rem; gap: 0.4rem; }
+            .nav-links a { font-size: 0.65rem; }
+        }
     </style>
 </head>
 <body>
