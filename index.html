@@ -235,6 +235,57 @@
             .phase { flex: 0 0 calc(33% - 1rem); }
         }
 
+        /* --- DELTA TABLE --- */
+        .delta-wrap { max-width: 1100px; margin: 0 auto; }
+        .delta-scroll { overflow-x: auto; }
+        .delta-table {
+            width: 100%; border-collapse: collapse;
+            font-family: var(--font-tech); font-size: 0.85rem;
+        }
+        .delta-table thead th {
+            text-align: left; padding: 0.9rem 1.2rem;
+            border-bottom: 1px solid #333;
+            font-weight: 700; letter-spacing: 0.15rem;
+            color: var(--text-dim); text-transform: uppercase;
+            font-size: 0.7rem; white-space: nowrap;
+        }
+        .delta-table thead th.col-arkane {
+            color: var(--accent-red);
+            text-shadow: 0 0 8px rgba(255, 0, 0, 0.3);
+        }
+        .delta-table tbody td {
+            padding: 0.65rem 1.2rem;
+            border-bottom: 1px solid #161616;
+            color: #ccc; vertical-align: middle;
+        }
+        .delta-table tbody td.feature {
+            color: #aaa; font-size: 0.85rem;
+        }
+        .delta-table tbody td.cell-mark {
+            text-align: center; font-size: 1rem; min-width: 60px;
+        }
+        .delta-table tbody td.col-arkane {
+            background: rgba(255, 0, 0, 0.04);
+            border-left: 1px solid rgba(255, 0, 0, 0.2);
+            color: #fff;
+        }
+        .delta-table tbody tr:hover td { background: rgba(255, 255, 255, 0.02); }
+        .delta-table tbody tr:hover td.col-arkane { background: rgba(255, 0, 0, 0.09); }
+        .mark-no  { color: #444; }
+        .mark-mid { color: #d4a017; }
+        .mark-yes { color: #00ff00; text-shadow: 0 0 6px rgba(0, 255, 0, 0.3); }
+        .delta-foot {
+            margin-top: 1.8rem; font-size: 0.75rem; color: #666;
+            padding-top: 1.2rem; border-top: 1px solid #1a1a1a;
+            line-height: 1.8;
+        }
+        .delta-foot .key-no  { color: #444; }
+        .delta-foot .key-mid { color: #d4a017; }
+        .delta-foot .key-yes { color: #00ff00; }
+        @media (max-width: 768px) {
+            .delta-table { min-width: 600px; }
+        }
+
         /* --- ARKCTL EASTER EGG TERMINAL --- */
         .arkctl-overlay {
             position: fixed; inset: 0; z-index: 10000;
@@ -300,6 +351,7 @@
             <li><a href="#capabilities">VECTORS</a></li>
             <li><a href="#logs">EXEC_LOG</a></li>
             <li><a href="#trajectory">TRAJECTORY</a></li>
+            <li><a href="#delta">DELTA</a></li>
             <li><a href="#collective">COLLECTIVE</a></li>
             <li><a href="#contact">COMMS</a></li>
         </ul>
@@ -465,14 +517,122 @@
             <div class="phase">
                 <div class="phase-num">07</div>
                 <div class="phase-dot"></div>
-                <div class="phase-label">Production</div>
+                <div class="phase-label">Prototype</div>
+            </div>
+        </div>
+        <p style="text-align: center; max-width: 720px; margin: 2.5rem auto 0; color: #666; font-size: 0.8rem; line-height: 1.7;">
+            phase-7 is where the system can run real applications — not where it is production-grade. Production hardening (HA, certifications, multi-site, supply chain) lives years past phase 7. We say this out loud because too many systems pretend otherwise.
+        </p>
+    </section>
+
+
+    <section id="delta">
+        <h2 class="section-title">04_DELTA</h2>
+        <div class="delta-wrap">
+            <div class="delta-scroll">
+                <table class="delta-table">
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Linux</th>
+                            <th>Linux + K8s</th>
+                            <th class="col-arkane">Arkane</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="feature">Workload Isolation</td>
+                            <td class="cell-mark"><span class="mark-no">✗</span></td>
+                            <td class="cell-mark"><span class="mark-mid">~</span></td>
+                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
+                        </tr>
+                        <tr>
+                            <td class="feature">Network Isolation</td>
+                            <td class="cell-mark"><span class="mark-no">✗</span></td>
+                            <td class="cell-mark"><span class="mark-mid">~</span></td>
+                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
+                        </tr>
+                        <tr>
+                            <td class="feature">Audit Mandatory</td>
+                            <td class="cell-mark"><span class="mark-no">✗</span></td>
+                            <td class="cell-mark"><span class="mark-no">✗</span></td>
+                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
+                        </tr>
+                        <tr>
+                            <td class="feature">Audit Tamper-Proof</td>
+                            <td class="cell-mark"><span class="mark-no">✗</span></td>
+                            <td class="cell-mark"><span class="mark-no">✗</span></td>
+                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
+                        </tr>
+                        <tr>
+                            <td class="feature">No Shell Access</td>
+                            <td class="cell-mark"><span class="mark-no">✗</span></td>
+                            <td class="cell-mark"><span class="mark-no">✗</span></td>
+                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
+                        </tr>
+                        <tr>
+                            <td class="feature">Immutable Binaries</td>
+                            <td class="cell-mark"><span class="mark-no">✗</span></td>
+                            <td class="cell-mark"><span class="mark-mid">~</span></td>
+                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
+                        </tr>
+                        <tr>
+                            <td class="feature">AI-Agent Sandbox</td>
+                            <td class="cell-mark"><span class="mark-no">✗</span></td>
+                            <td class="cell-mark"><span class="mark-mid">~</span></td>
+                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
+                        </tr>
+                        <tr>
+                            <td class="feature">Blast Radius</td>
+                            <td>High</td>
+                            <td>Medium</td>
+                            <td class="col-arkane"><span class="mark-yes">Single cell</span></td>
+                        </tr>
+                        <tr>
+                            <td class="feature">Direct Hardware Access</td>
+                            <td class="cell-mark"><span class="mark-no">✗</span></td>
+                            <td class="cell-mark"><span class="mark-no">✗</span></td>
+                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
+                        </tr>
+                        <tr>
+                            <td class="feature">RAM Dedup (AI Models)</td>
+                            <td class="cell-mark"><span class="mark-no">✗</span></td>
+                            <td class="cell-mark"><span class="mark-no">✗</span></td>
+                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
+                        </tr>
+                        <tr>
+                            <td class="feature">Kernel I/O Overhead</td>
+                            <td>High</td>
+                            <td>High</td>
+                            <td class="col-arkane"><span class="mark-yes">Minimal</span></td>
+                        </tr>
+                        <tr>
+                            <td class="feature">Deploy Complexity</td>
+                            <td>High</td>
+                            <td>Very High</td>
+                            <td class="col-arkane"><span class="mark-yes">Minimal</span></td>
+                        </tr>
+                        <tr>
+                            <td class="feature">Applications</td>
+                            <td>Native</td>
+                            <td>Native</td>
+                            <td class="col-arkane">via MicroVM <span style="color:#666;">// native: roadmap</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="delta-foot">
+                <span class="key-yes">✓</span>&nbsp; supported by default &nbsp;&nbsp;//&nbsp;&nbsp;
+                <span class="key-mid">~</span>&nbsp; possible, but not by default — requires manual configuration &nbsp;&nbsp;//&nbsp;&nbsp;
+                <span class="key-no">✗</span>&nbsp; not supported<br>
+                Native application support is on the roadmap. Today, legacy workloads run inside a MicroVM cell. We show this openly because the people who would ask are the people who matter.
             </div>
         </div>
     </section>
 
 
     <section id="collective">
-        <h2 class="section-title">04_THE_COLLECTIVE</h2>
+        <h2 class="section-title">05_THE_COLLECTIVE</h2>
         <div style="max-width: 800px; color: #aaa;">
             <p style="margin-bottom: 2rem; font-size: 1.1rem;">
                 ARKANE is a small team of developers and researchers. We are currently not selling products.
@@ -490,7 +650,7 @@
     </section>
 
     <section id="contact">
-        <h2 class="section-title">05_ENCRYPTED_COMMS</h2>
+        <h2 class="section-title">06_ENCRYPTED_COMMS</h2>
         <div class="contact-grid">
             <div>
                 <a href="mailto:info@arkane.ch" class="email-link">info@arkane.ch</a>
@@ -903,7 +1063,9 @@ fx2+vnkfp0C9PU7wjqqW+L+v/mKTDXq1C5GifKCEcgCWLFEuOUygoKMZyvIkU447
                 arkctlPrint(['phase-5  i/o & network        [ACTIVE]'], 'line-cmd');
                 arkctlPrint([
                     'phase-6  gateways             [PLANNED]',
-                    'phase-7  production           [PLANNED]',
+                    'phase-7  prototype            [PLANNED]',
+                    '',
+                    '// production-grade lives many phases past 7. we are honest about this.',
                 ]);
             },
             status: () => arkctlPrint([
