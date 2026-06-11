@@ -1,1589 +1,1367 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arkane OS — A system of cells</title>
+<meta name="description" content="Arkane OS is a capability exokernel written in Rust. Every workload — including your AI — lives in its own hardware-isolated cell. 24 syscalls. Nothing else.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%239db89a' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23e8927c'/%3E%3C/svg%3E">
+<script>
+  document.documentElement.classList.add('js');
+  // theme before first paint: stored > system > dark
+  (function () {
+    let t = null;
+    try { t = localStorage.getItem('arkane_theme'); } catch (e) {}
+    if (!t) t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+/* ================= themes ================= */
+:root {
+  --ink: #0d0c0a;
+  --ink-2: #12100d;
+  --bone: #ece7dd;
+  --muted: #a39d8f;
+  --faint: #6e695e;
+  --hair: rgba(236,231,221,0.10);
+  --hair-soft: rgba(236,231,221,0.06);
+  --sage: #9db89a;
+  --coral: #e8927c;
+  --ice: #a8c5d6;
+  --sand: #d6c08f;
+  --glass: rgba(13,12,10,0.5);
+  --serif: 'Fraunces', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+[data-theme="light"] {
+  --ink: #f3eee3;
+  --ink-2: #ebe5d6;
+  --bone: #241f17;
+  --muted: #6b6455;
+  --faint: #9b937f;
+  --hair: rgba(36,31,23,0.14);
+  --hair-soft: rgba(36,31,23,0.08);
+  --sage: #66835f;
+  --coral: #c2613f;
+  --ice: #5d7f96;
+  --sand: #a98f54;
+  --glass: rgba(243,238,227,0.55);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--ink);
+  color: var(--bone);
+  font-family: var(--serif);
+  font-size: 19px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  transition: background .5s ease, color .5s ease;
+}
+::selection { background: rgba(232,146,124,0.35); }
+.mono { font-family: var(--mono); }
+.mono.sm { font-size: 0.75em; }
+b { font-weight: 600; }
+main { position: relative; z-index: 1; }
 
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="Referrer-Policy" content="no-referrer">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+/* ================= plankton layer ================= */
+#plankton {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+}
 
-    <title>A R K A N E | SYSTEM STATUS: ACTIVE</title>
-    <style>
-        /* --- CORE SETTINGS --- */
-        :root {
-            --bg-color: #050505;
-            --text-main: #e0e0e0;
-            --text-dim: #888;
-            --accent-red: #ff0000;
-            --card-bg: rgba(10, 10, 10, 0.65);
-            --card-border: 1px solid rgba(50, 50, 50, 0.5);
-            --font-tech: 'Courier New', Courier, monospace;
-        }
+/* ================= boot overlay (always dark — it's a screen) ============ */
+#boot {
+  position: fixed; inset: 0; z-index: 1000;
+  background: #080706;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 0 max(24px, calc(50vw - 330px));
+  cursor: pointer;
+  transition: opacity .7s ease;
+}
+#boot.off { opacity: 0; pointer-events: none; }
+html:not(.js) #boot, html.booted #boot { display: none; }
+#boot-log {
+  font-family: var(--mono); font-size: 13px; line-height: 1.9;
+  color: #8f897c; white-space: pre-wrap;
+}
+#boot-log .ok { color: #9db89a; }
+#boot-log .hl { color: #ece7dd; }
+#boot-log .warn { color: #e8927c; }
+#boot-skip {
+  position: absolute; bottom: 28px; left: 0; right: 0; text-align: center;
+  font-family: var(--mono); font-size: 11px; letter-spacing: .2em;
+  color: #4d483f; text-transform: uppercase;
+}
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+/* ================= power-down overlay ================= */
+#powerdown {
+  position: fixed; inset: 0; z-index: 1100; background: #000;
+  opacity: 0; pointer-events: none;
+}
+#powerdown.on { opacity: 1; pointer-events: all; transition: opacity .12s; }
+#powerdown .pd-line {
+  position: absolute; left: 0; right: 0; top: 50%; height: 2px;
+  background: #fff; opacity: 0;
+}
+#powerdown.on .pd-line { animation: crtoff .5s ease-out forwards; }
+@keyframes crtoff {
+  0%   { opacity: .9; transform: scaleX(1);   }
+  60%  { opacity: .7; transform: scaleX(.4);  }
+  100% { opacity: 0;  transform: scaleX(.02); }
+}
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: var(--font-tech);
-            line-height: 1.6;
-            overflow-x: hidden;
-            cursor: none; /* Custom Cursor */
-        }
+/* ================= HUD ================= */
+#hud {
+  position: fixed; left: 22px; bottom: 20px; z-index: 500;
+  font-family: var(--mono); font-size: 11px; line-height: 1.8;
+  color: var(--faint);
+  opacity: 0; transition: opacity 1s ease .3s;
+  pointer-events: none;
+}
+html.booted #hud { opacity: 1; }
+.hud-dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--sage); margin-right: 8px;
+  box-shadow: 0 0 8px var(--sage);
+  animation: breathe 3.4s ease-in-out infinite;
+}
+@keyframes breathe { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+.hud-sys { color: var(--muted); transition: color .15s; }
+.hud-sys.flash { color: var(--coral); }
+@media (max-width: 720px) { #hud { display: none; } }
 
-        /* --- CUSTOM CURSOR --- */
-        .cursor-dot,
-        .cursor-outline {
-            position: fixed;
-            top: 0;
-            left: 0;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            z-index: 9999;
-            pointer-events: none;
-        }
+/* ================= theme toggle ================= */
+#theme-btn {
+  position: fixed; top: 20px; right: 22px; z-index: 500;
+  font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted);
+  background: var(--glass); backdrop-filter: blur(8px);
+  border: 1px solid var(--hair); border-radius: 100px;
+  padding: 9px 18px; cursor: pointer;
+  opacity: 0; transition: opacity 1s ease .5s, color .25s, border-color .25s;
+}
+html.booted #theme-btn { opacity: 1; }
+#theme-btn:hover { color: var(--bone); border-color: var(--muted); }
 
-        .cursor-dot {
-            width: 6px;
-            height: 6px;
-            background-color: var(--accent-red);
-            box-shadow: 0 0 10px var(--accent-red);
-        }
+/* ================= cursor ring ================= */
+#cursor {
+  position: fixed; top: 0; left: 0; z-index: 900;
+  width: 34px; height: 34px; margin: -17px 0 0 -17px;
+  border: 1px solid var(--muted); border-radius: 50%;
+  pointer-events: none; opacity: 0;
+  transition: width .25s, height .25s, margin .25s, opacity .4s, border-color .25s;
+}
+#cursor.hot { width: 56px; height: 56px; margin: -28px 0 0 -28px; border-color: var(--sage); }
+@media (pointer: coarse) { #cursor { display: none; } }
 
-        .cursor-outline {
-            width: 30px;
-            height: 30px;
-            border: 1px solid rgba(255, 0, 0, 0.5);
-            transition: all 0.1s ease-out;
-        }
+/* ================= hero ================= */
+#hero {
+  position: relative; min-height: 100svh;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; overflow: hidden;
+}
+#hero-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hero-inner { position: relative; z-index: 2; padding: 0 26px; max-width: 880px; }
+.kicker {
+  font-family: var(--mono); font-size: 12px; letter-spacing: .3em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 34px;
+}
+h1 {
+  font-size: clamp(46px, 7.6vw, 96px);
+  font-weight: 300; line-height: 1.06; letter-spacing: -0.015em;
+}
+h1 em { font-style: italic; font-weight: 300; color: var(--sage); }
+.hero-sub {
+  margin: 36px auto 0; max-width: 560px;
+  font-size: 20px; color: var(--muted); line-height: 1.65;
+}
+.hero-sub b { color: var(--bone); }
+.scroll-cue { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 2; }
+.scroll-cue span {
+  display: block; width: 1px; height: 56px;
+  background: linear-gradient(180deg, transparent, var(--muted));
+  animation: cue 2.4s ease-in-out infinite;
+}
+@keyframes cue { 0%,100% { transform: scaleY(.4); opacity:.3; } 50% { transform: scaleY(1); opacity:.9; } }
 
-        body.hovering .cursor-outline {
-            width: 45px;
-            height: 45px;
-            background-color: rgba(255, 0, 0, 0.15);
-            border-color: var(--accent-red);
-            box-shadow: 0 0 20px rgba(255, 0, 0, 0.2);
-        }
+html.js .hero-inner > * { opacity: 0; transform: translateY(22px); transition: opacity 1.1s ease, transform 1.1s cubic-bezier(.16,1,.3,1); }
+html.js.booted .hero-inner > * { opacity: 1; transform: none; }
+html.js.booted .hero-inner .kicker { transition-delay: .15s; }
+html.js.booted .hero-inner h1 { transition-delay: .3s; }
+html.js.booted .hero-inner .hero-sub { transition-delay: .55s; }
 
-        @media (hover: none) and (pointer: coarse) {
-            .cursor-dot, .cursor-outline { display: none; }
-            body { cursor: auto; }
-        }
+/* ================= chapters ================= */
+.chapter { padding: 15vh 26px; position: relative; }
+.ch-inner { max-width: 1040px; margin: 0 auto; }
+.ch-inner.narrow { max-width: 660px; }
+.ch-inner.center { text-align: center; }
+.ch-no {
+  font-family: var(--mono); font-size: 12px; letter-spacing: .28em;
+  text-transform: uppercase; color: var(--faint); margin-bottom: 26px;
+}
+h2 {
+  font-size: clamp(34px, 4.6vw, 56px);
+  font-weight: 300; line-height: 1.12; letter-spacing: -0.012em;
+  max-width: 720px;
+}
+.ch-inner.center h2 { margin: 0 auto; }
+.prose {
+  margin-top: 28px; font-size: 19.5px; color: var(--muted);
+  max-width: 620px; line-height: 1.7;
+}
+.ch-inner.center .prose { margin-left: auto; margin-right: auto; }
+.prose b { color: var(--bone); }
+.caption { margin-top: 22px; font-size: 14.5px; color: var(--faint); max-width: 620px; line-height: 1.7; }
+.ch-inner.center .caption { margin-left: auto; margin-right: auto; }
+.caption .mono { font-size: 12px; color: var(--muted); }
+.caption b { color: var(--muted); }
+.prose code, .caption code {
+  font-family: var(--mono); font-size: .72em; color: var(--sage);
+  border: 1px solid var(--hair); border-radius: 4px; padding: 2px 7px; vertical-align: 1px;
+}
 
-        #neural-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: #050505; }
+.spawn-strip {
+  max-width: 1040px; margin: 0 auto 34px; padding: 0 0 14px;
+  font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em;
+  color: var(--faint);
+  border-bottom: 1px solid var(--hair);
+  min-height: 32px; position: relative;
+}
+.spawn-strip::after {
+  content: ''; position: absolute; left: 0; bottom: -1px; height: 1px; width: 0;
+  background: linear-gradient(90deg, var(--sage), transparent);
+  transition: width 1.4s cubic-bezier(.16,1,.3,1);
+}
+.chapter.on .spawn-strip::after { width: 100%; }
+.spawn-strip .ok { color: var(--sage); }
 
-        .scanline {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(to bottom, transparent 50%, rgba(255, 0, 0, 0.02) 51%);
-            background-size: 100% 4px; pointer-events: none; z-index: 9999; animation: scan 8s linear infinite;
-        }
-        @keyframes scan { 0% { transform: translateY(0); } 100% { transform: translateY(4px); } }
+html.js .ch-inner { opacity: 0; transform: translateY(34px); transition: opacity 1s ease .2s, transform 1s cubic-bezier(.16,1,.3,1) .2s; }
+html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
 
-        /* --- NAVIGATION --- */
-        nav {
-            position: fixed; top: 0; width: 100%; padding: 1.5rem 3rem;
-            display: flex; justify-content: space-between; align-items: center;
-            background: rgba(5, 5, 5, 0.85); border-bottom: 1px solid #1a1a1a; z-index: 1000;
-        }
+/* ================= numerals ================= */
+.numerals { display: flex; gap: clamp(36px, 7vw, 84px); margin-top: 64px; flex-wrap: wrap; }
+.nume .n { display: block; font-size: clamp(52px, 7vw, 80px); font-weight: 300; line-height: 1; }
+.nume:nth-child(1) .n { color: var(--sage); }
+.nume:nth-child(2) .n { color: var(--coral); }
+.nume:nth-child(3) .n { color: var(--ice); }
+.nume .l {
+  display: block; margin-top: 12px;
+  font-family: var(--mono); font-size: 11.5px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--faint); line-height: 1.8;
+}
 
-        .logo-link { text-decoration: none; cursor: none; }
-        .logo {
-            font-size: 1.5rem; font-weight: 900; letter-spacing: 0.5rem; color: var(--accent-red);
-            text-transform: uppercase; text-shadow: 0 0 10px rgba(255, 0, 0, 0.4); transition: all 0.3s;
-        }
-        .logo:hover { color: #fff; text-shadow: 0 0 15px rgba(255, 255, 255, 0.8); }
+/* ================= playground ================= */
+.playground-frame {
+  margin-top: 48px; position: relative;
+  border: 1px solid var(--hair); border-radius: 18px;
+  background: var(--ink-2);
+  overflow: hidden;
+  transition: background .5s ease;
+}
+#play-canvas { display: block; width: 100%; height: clamp(420px, 60vh, 600px); }
+.play-stats {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 14px 22px;
+  font-family: var(--mono); font-size: 12px; color: var(--faint);
+  display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+  border-top: 1px solid var(--hair);
+  background: var(--glass); backdrop-filter: blur(6px);
+}
+.play-stats b { color: var(--bone); font-weight: 500; }
+.play-stats b.ok { color: var(--sage); }
+.play-stats b.bad { color: var(--coral); }
+.play-stats .sep { color: var(--hair); }
 
-        .nav-links { display: flex; gap: 2rem; list-style: none; }
-        .nav-links a {
-            color: var(--text-dim); text-decoration: none; font-size: 0.85rem; letter-spacing: 0.1rem;
-            transition: color 0.3s; text-transform: uppercase; cursor: none;
-        }
-        .nav-links a:hover { color: var(--accent-red); }
+/* ================= contract card ================= */
+.contract {
+  margin-top: 46px; border: 1px solid var(--hair); border-radius: 14px;
+  overflow: hidden; background: var(--ink-2); transition: background .5s ease;
+}
+.contract .ct-head { padding: 13px 22px; font-family: var(--mono); font-size: 12px; color: var(--faint); border-bottom: 1px solid var(--hair); }
+.contract pre { padding: 24px 26px; font-family: var(--mono); font-size: 14px; line-height: 1.9; color: var(--muted); white-space: pre-wrap; }
+.contract .m { color: var(--sage); }
+.contract .r { color: var(--coral); }
 
-        /* --- HERO --- */
-        .hero { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; position: relative; padding: 0 1rem; }
-        .hero-title { font-size: clamp(3rem, 9vw, 8rem); font-weight: 900; letter-spacing: 1rem; color: var(--accent-red); margin-bottom: 0.5rem; text-shadow: 0 0 20px rgba(255, 0, 0, 0.6); animation: glitch-skew 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite; }
-        .hero-subtitle { font-size: 1rem; color: var(--text-dim); letter-spacing: 0.4rem; text-transform: uppercase; max-width: 800px; }
+/* ================= terminal (always dark — it's a screen) ============ */
+.term-frame {
+  margin-top: 48px; border: 1px solid var(--hair); border-radius: 14px;
+  overflow: hidden; background: #0a0908; max-width: 780px;
+}
+.term-head {
+  display: flex; align-items: center; gap: 7px;
+  padding: 13px 20px; font-family: var(--mono); font-size: 12px; color: #6e695e;
+  border-bottom: 1px solid rgba(236,231,221,0.1);
+}
+.term-head .td { width: 9px; height: 9px; border-radius: 50%; }
+.term-head .td:nth-child(1) { background: rgba(232,146,124,.5); }
+.term-head .td:nth-child(2) { background: rgba(214,192,143,.5); }
+.term-head .td:nth-child(3) { background: rgba(157,184,154,.5); }
+.term-head :last-child { margin-left: 10px; }
+#term-body {
+  padding: 24px 24px 28px; font-family: var(--mono); font-size: 13px; line-height: 1.85;
+  min-height: 300px; white-space: pre-wrap; word-break: break-word;
+  color: #a39d8f;
+}
+#term-body .p { color: #9db89a; }
+#term-body .dim { color: #6e695e; }
+#term-body .route { color: #d6c08f; }
+#term-body .ans { color: #ece7dd; font-style: italic; font-family: var(--serif); font-size: 16px; line-height: 1.7; }
+#term-body .deny { color: #e8927c; }
+.tcursor { display: inline-block; width: 7px; height: 15px; background: #9db89a; vertical-align: -2px; animation: blink 1s step-start infinite; }
+@keyframes blink { 50% { opacity: 0; } }
 
-        section { padding: 6rem 5%; border-top: 1px solid #111; }
-        .section-title { font-size: 2rem; color: var(--text-main); margin-bottom: 3rem; letter-spacing: 0.2rem; border-left: 3px solid var(--accent-red); padding-left: 1rem; text-transform: uppercase; }
+/* ================= plug ================= */
+#plug {
+  margin-top: 52px;
+  display: inline-flex; align-items: center; gap: 14px;
+  padding: 20px 38px;
+  background: transparent; color: var(--coral);
+  border: 1px solid var(--coral); border-radius: 100px;
+  font-family: var(--mono); font-size: 14px; letter-spacing: .12em; text-transform: uppercase;
+  cursor: pointer; transition: all .3s;
+}
+#plug:hover { background: rgba(232,146,124,0.1); box-shadow: 0 0 44px rgba(232,146,124,0.2); }
+#plug:active { transform: scale(.97); }
+#restored {
+  margin: 30px auto 0; font-family: var(--mono); font-size: 12.5px; color: var(--sage);
+  padding: 12px 22px; border: 1px solid var(--sage); border-radius: 100px;
+  display: inline-block;
+}
+#restored[hidden] { display: none; }
 
-        /* --- GRID & CARDS --- */
-        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; }
-        .card {
-            background: var(--card-bg); border: var(--card-border); padding: 2.5rem; position: relative;
-            overflow: hidden; transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s; cursor: none;
-        }
-        .card:hover { transform: translateY(-5px); border-color: var(--accent-red); box-shadow: 0 0 30px rgba(255, 0, 0, 0.1); background: rgba(15, 15, 15, 0.8); }
-        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: var(--accent-red); transform: scaleX(0); transform-origin: left; transition: transform 0.4s ease-out; }
-        .card:hover::before { transform: scaleX(1); }
-        .card-icon { font-size: 2rem; margin-bottom: 1.5rem; color: var(--accent-red); }
-        .card h3 { margin-bottom: 1rem; font-size: 1.1rem; letter-spacing: 0.1rem; color: #fff; text-transform: uppercase; }
-        .card p { color: #999; font-size: 0.9rem; line-height: 1.7; }
+/* ================= chronicle ================= */
+.chron { list-style: none; margin-top: 54px; }
+.chron li {
+  display: grid; grid-template-columns: 84px 1fr; gap: 22px;
+  padding: 16px 0; align-items: baseline;
+  border-bottom: 1px solid var(--hair-soft);
+  font-size: 17.5px; color: var(--muted);
+}
+.chron li b { color: var(--bone); font-weight: 500; }
+.chron .v { font-family: var(--mono); font-size: 12px; color: var(--faint); }
+.chron li.done .v { color: var(--sage); }
+.chron li.done span:last-child::after { content: ' ●'; color: var(--sage); font-size: 9px; vertical-align: 2px; }
+.chron li.now span:last-child::after { content: ' — in progress'; font-style: italic; color: var(--faint); font-size: 14px; }
 
-        /* --- TERMINAL --- */
-        .terminal-wrapper { max-width: 900px; margin: 0 auto; background: rgba(5, 5, 5, 0.9); border: 1px solid #333; box-shadow: 0 0 50px rgba(0,0,0,0.5); font-family: 'Courier New', monospace; }
-        .terminal-header { background: #1a1a1a; padding: 0.5rem 1rem; border-bottom: 1px solid #333; display: flex; gap: 0.5rem; align-items: center; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; background: #555; }
-        .dot.red { background: #ff5555; }
-        .term-title { margin-left: 1rem; font-size: 0.8rem; color: #888; }
-        .terminal-body { padding: 2rem; font-size: 0.9rem; }
+/* ================= coda ================= */
+#coda { text-align: center; padding: 22vh 26px 18vh; }
+.coda-line { font-size: clamp(38px, 5.6vw, 64px); font-weight: 300; line-height: 1.15; letter-spacing: -0.012em; }
+.coda-line em { color: var(--sage); }
+.colophon { margin-top: 64px; font-family: var(--mono); font-size: 11px; letter-spacing: .26em; text-transform: uppercase; color: var(--faint); }
 
-        /* LOG ENTRY ALIGNMENT FIX */
-        .log-entry {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 0.5rem;
-            opacity: 0.7;
-            font-family: 'Courier New', monospace;
-        }
-        .log-entry:last-child { opacity: 1; margin-bottom: 0; }
-
-        .timestamp {
-            color: #555;
-            min-width: 100px;
-        }
-
-        .command {
-            color: var(--accent-red);
-            font-weight: bold;
-            min-width: 110px;
-        }
-
-        .output {
-            color: #ccc;
-            flex: 1;
-        }
-
-        .cursor { display: inline-block; width: 8px; height: 15px; background: var(--accent-red); animation: blink 1s infinite; vertical-align: middle; }
-        @keyframes blink { 50% { opacity: 0; } }
-
-        /* --- CONTACT / PGP --- */
-        .contact-grid { display: grid; gap: 3rem; }
-        .pgp-wrapper { position: relative; max-width: 100%; }
-        .pgp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-size: 0.8rem; color: #666; flex-wrap: wrap; gap: 10px; }
-        .pgp-controls { display: flex; gap: 10px; }
-
-        .copy-btn {
-            background: transparent; border: 1px solid #333; color: var(--accent-red);
-            font-family: var(--font-tech); padding: 2px 10px; cursor: none;
-            font-size: 0.7rem; transition: all 0.2s; text-transform: uppercase;
-        }
-        .copy-btn:hover { background: var(--accent-red); color: #000; box-shadow: 0 0 10px var(--accent-red); }
-
-        .pgp-container {
-            background: rgba(10, 10, 10, 0.3); border: 1px dashed #333; padding: 1.5rem;
-            font-size: 0.7rem; color: #555; overflow-x: auto; font-family: monospace; white-space: pre;
-            transition: all 0.5s ease-in-out; position: relative;
-        }
-        .pgp-container.collapsed { max-height: 140px; overflow: hidden; mask-image: linear-gradient(180deg, black 60%, transparent 100%); -webkit-mask-image: linear-gradient(180deg, black 60%, transparent 100%); border-bottom-color: transparent; }
-        .pgp-container.expanded { max-height: 2000px; mask-image: none; -webkit-mask-image: none; border-bottom-color: #333; }
-        .pgp-container::selection { background: var(--accent-red); color: #000; }
-
-        .email-link { color: var(--accent-red); text-decoration: none; font-size: 1.5rem; letter-spacing: 2px; transition: all 0.3s; display: inline-block; margin-bottom: 1rem; cursor: none; }
-        .email-link:hover { text-shadow: 0 0 15px rgba(255, 0, 0, 0.8); color: #fff; transform: translateX(10px); }
-
-        /* --- TRAJECTORY (PHASE TIMELINE) --- */
-        .trajectory {
-            display: flex; align-items: flex-start; justify-content: space-between;
-            gap: 0.5rem; max-width: 1000px; margin: 0 auto; position: relative;
-            padding: 1rem 0;
-        }
-        .phase {
-            flex: 1; display: flex; flex-direction: column; align-items: center;
-            position: relative; min-width: 0;
-        }
-        .phase-dot {
-            width: 18px; height: 18px; border-radius: 50%;
-            border: 1px solid #333; background: #0a0a0a;
-            position: relative; z-index: 2; transition: all 0.3s;
-        }
-        .phase.done .phase-dot {
-            background: var(--accent-red); border-color: var(--accent-red);
-            box-shadow: 0 0 12px rgba(255, 0, 0, 0.5);
-        }
-        .phase.active .phase-dot {
-            background: transparent; border-color: var(--accent-red);
-            animation: pulse 1.6s ease-in-out infinite;
-        }
-        .phase.active .phase-dot::after {
-            content: ''; position: absolute; inset: 4px; border-radius: 50%;
-            background: var(--accent-red); box-shadow: 0 0 10px var(--accent-red);
-        }
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.6); }
-            50%      { box-shadow: 0 0 0 8px rgba(255, 0, 0, 0); }
-        }
-        .phase-label {
-            margin-top: 0.8rem; font-size: 0.7rem; letter-spacing: 0.15rem;
-            color: var(--text-dim); text-transform: uppercase; text-align: center;
-        }
-        .phase.done .phase-label { color: #ccc; }
-        .phase.active .phase-label { color: var(--accent-red); }
-        .phase-num {
-            font-size: 0.6rem; color: #444; margin-bottom: 0.3rem;
-            letter-spacing: 0.1rem;
-        }
-        .trajectory::before {
-            content: ''; position: absolute; top: calc(1rem + 0.6rem + 8px);
-            left: 5%; right: 5%; height: 1px; background: #222; z-index: 1;
-        }
-        @media (max-width: 768px) {
-            .trajectory { flex-wrap: wrap; gap: 1.5rem; }
-            .trajectory::before { display: none; }
-            .phase { flex: 0 0 calc(33% - 1rem); }
-        }
-
-        /* --- CURRENT PHASE SUB-TIMELINE --- */
-        .subphase-wrap { max-width: 720px; margin: 3.5rem auto 0; }
-        .subphase-head {
-            font-size: 0.75rem; letter-spacing: 0.2rem; color: var(--text-dim);
-            text-transform: uppercase; margin-bottom: 1.6rem; text-align: center;
-        }
-        .subphase-head .sp-accent { color: var(--accent-red); }
-        .subphase-list { display: flex; flex-direction: column; position: relative; }
-        .subphase-list::before {
-            content: ''; position: absolute; left: 6px; top: 0.9rem; bottom: 0.9rem;
-            width: 1px; background: #222; z-index: 1;
-        }
-        .subphase { display: flex; align-items: flex-start; gap: 1rem; padding: 0.7rem 0; position: relative; }
-        .sp-marker {
-            flex-shrink: 0; width: 14px; height: 14px; border-radius: 50%;
-            border: 1px solid #333; background: #0a0a0a; margin-top: 0.25rem;
-            position: relative; z-index: 2;
-        }
-        .subphase.done .sp-marker {
-            background: var(--accent-red); border-color: var(--accent-red);
-            box-shadow: 0 0 8px rgba(255, 0, 0, 0.4);
-        }
-        .subphase.active .sp-marker {
-            border-color: var(--accent-red); animation: pulse 1.6s ease-in-out infinite;
-        }
-        .subphase.active .sp-marker::after {
-            content: ''; position: absolute; inset: 3px; border-radius: 50%;
-            background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red);
-        }
-        .sp-body { flex: 1; min-width: 0; }
-        .sp-title { font-size: 0.88rem; color: #ccc; letter-spacing: 0.04rem; }
-        .subphase.done .sp-title { color: #aaa; }
-        .subphase.active .sp-title { color: #fff; }
-        .subphase.queued .sp-title { color: #666; }
-        .sp-tag {
-            font-size: 0.58rem; letter-spacing: 0.12rem; text-transform: uppercase;
-            margin-left: 0.6rem; padding: 1px 6px; border: 1px solid #333; border-radius: 2px;
-            white-space: nowrap;
-        }
-        .subphase.done .sp-tag { color: #00ff00; border-color: rgba(0, 255, 0, 0.3); }
-        .subphase.active .sp-tag { color: var(--accent-red); border-color: var(--accent-red); }
-        .subphase.queued .sp-tag { color: #555; }
-        .sp-desc { font-size: 0.72rem; color: #666; margin-top: 0.25rem; line-height: 1.5; }
-        @media (max-width: 768px) {
-            .subphase-wrap { margin-top: 2.5rem; }
-            .sp-title { font-size: 0.8rem; }
-            .sp-desc { font-size: 0.66rem; }
-            .sp-tag { display: inline-block; margin-left: 0; margin-top: 0.3rem; }
-        }
-
-        /* --- DELTA TABLE --- */
-        .delta-wrap { max-width: 1100px; margin: 0 auto; }
-        .delta-scroll { overflow-x: auto; }
-        .delta-table {
-            width: 100%; border-collapse: collapse;
-            font-family: var(--font-tech); font-size: 0.85rem;
-        }
-        .delta-table thead th {
-            text-align: left; padding: 0.9rem 1.2rem;
-            border-bottom: 1px solid #333;
-            font-weight: 700; letter-spacing: 0.15rem;
-            color: var(--text-dim); text-transform: uppercase;
-            font-size: 0.7rem; white-space: nowrap;
-        }
-        .delta-table thead th.col-arkane {
-            color: var(--accent-red);
-            text-shadow: 0 0 8px rgba(255, 0, 0, 0.3);
-        }
-        .delta-table tbody td {
-            padding: 0.65rem 1.2rem;
-            border-bottom: 1px solid #161616;
-            color: #ccc; vertical-align: middle;
-        }
-        .delta-table tbody td.feature {
-            color: #aaa; font-size: 0.85rem;
-        }
-        .delta-table tbody td.cell-mark {
-            text-align: center; font-size: 1rem; min-width: 60px;
-        }
-        .delta-table tbody td.col-arkane {
-            background: rgba(255, 0, 0, 0.04);
-            border-left: 1px solid rgba(255, 0, 0, 0.2);
-            color: #fff;
-        }
-        .delta-table tbody tr:hover td { background: rgba(255, 255, 255, 0.02); }
-        .delta-table tbody tr:hover td.col-arkane { background: rgba(255, 0, 0, 0.09); }
-        .mark-no  { color: #444; }
-        .mark-mid { color: #d4a017; }
-        .mark-yes { color: #00ff00; text-shadow: 0 0 6px rgba(0, 255, 0, 0.3); }
-        .delta-foot {
-            margin-top: 1.8rem; font-size: 0.75rem; color: #666;
-            padding-top: 1.2rem; border-top: 1px solid #1a1a1a;
-            line-height: 1.8;
-        }
-        .delta-foot .key-no  { color: #444; }
-        .delta-foot .key-mid { color: #d4a017; }
-        .delta-foot .key-yes { color: #00ff00; }
-        @media (max-width: 768px) {
-            .delta-table { min-width: 600px; }
-        }
-
-        /* --- ARKCTL EASTER EGG TERMINAL --- */
-        .arkctl-overlay {
-            position: fixed; inset: 0; z-index: 10000;
-            background: rgba(0, 0, 0, 0.88);
-            display: flex; align-items: center; justify-content: center;
-            padding: 2rem; backdrop-filter: blur(2px);
-        }
-        .arkctl-overlay.hidden { display: none; }
-        .arkctl-modal {
-            width: min(820px, 100%); height: min(520px, 90vh);
-            background: rgba(5, 5, 5, 0.97); border: 1px solid var(--accent-red);
-            box-shadow: 0 0 60px rgba(255, 0, 0, 0.25);
-            display: flex; flex-direction: column;
-        }
-        .arkctl-modal .terminal-header { justify-content: flex-start; }
-        .arkctl-close {
-            background: transparent; border: none; color: #666; cursor: none;
-            font-family: var(--font-tech); margin-left: auto; font-size: 0.75rem;
-            letter-spacing: 0.1rem;
-        }
-        .arkctl-close:hover { color: var(--accent-red); }
-        .arkctl-body {
-            flex: 1; padding: 1.5rem; font-family: var(--font-tech); font-size: 0.85rem;
-            color: #ccc; overflow-y: auto; line-height: 1.6; white-space: pre-wrap;
-            word-break: break-word;
-        }
-        .arkctl-body .line-cmd { color: var(--accent-red); }
-        .arkctl-body .line-out { color: #aaa; }
-        .arkctl-body .line-err { color: #ff5555; }
-        .arkctl-body .line-ok  { color: #00ff00; }
-        .arkctl-body::-webkit-scrollbar { width: 6px; }
-        .arkctl-body::-webkit-scrollbar-thumb { background: #333; }
-        .arkctl-input-row {
-            display: flex; gap: 0.6rem; padding: 0.8rem 1.5rem;
-            border-top: 1px solid #222; align-items: center;
-        }
-        .arkctl-prompt { color: var(--accent-red); font-weight: bold; font-family: var(--font-tech); }
-        #arkctl-input {
-            flex: 1; background: transparent; border: none; outline: none;
-            color: #fff; font-family: var(--font-tech); font-size: 0.9rem;
-            caret-color: var(--accent-red); cursor: none;
-        }
-
-        footer { background: transparent; padding: 3rem; text-align: center; border-top: 1px solid #111; font-size: 0.8rem; color: #444; }
-
-        @keyframes glitch-skew { 0% { transform: skew(0deg); } 20% { transform: skew(-2deg); } 40% { transform: skew(2deg); } 60% { transform: skew(0deg); } 80% { transform: skew(1deg); } 100% { transform: skew(0deg); } }
-        @media (max-width: 768px) { nav { padding: 1rem; flex-direction: column; gap: 1rem; position: relative; background: rgba(5,5,5,0.9); } .nav-links { flex-wrap: wrap; justify-content: center; gap: 1rem; } .hero-title { font-size: 3.5rem; } }
-
-        /* --- BOOT SEQUENCE --- */
-        .boot-hidden { opacity: 0 !important; }
-
-        /* --- HERO TELEMETRY BAR --- */
-        .hero-stats {
-            margin-top: 2.5rem;
-            font-size: 0.7rem;
-            letter-spacing: 0.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.7rem;
-            flex-wrap: wrap;
-            font-family: var(--font-tech);
-        }
-        .stat-pulse {
-            width: 6px; height: 6px; border-radius: 50%;
-            background: #00ff00;
-            box-shadow: 0 0 8px #00ff00;
-            display: inline-block;
-            animation: stat-blink 2s ease-in-out infinite;
-        }
-        @keyframes stat-blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-        .stat-label { color: #666; }
-        .stat-value {
-            color: var(--accent-red);
-            text-shadow: 0 0 6px rgba(255, 0, 0, 0.4);
-        }
-        .stat-sep { color: #333; }
-
-        /* --- ARKCTL LAUNCHER --- */
-        .arkctl-launcher {
-            text-align: center;
-            margin-top: 3rem;
-        }
-        .arkctl-launch-btn {
-            background: rgba(15, 5, 5, 0.6);
-            border: 1px solid var(--accent-red);
-            color: #fff;
-            font-family: var(--font-tech);
-            font-size: 0.9rem;
-            letter-spacing: 0.2rem;
-            padding: 1rem 2rem;
-            cursor: none;
-            text-transform: uppercase;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.6rem;
-        }
-        .arkctl-launch-btn:hover {
-            background: var(--accent-red);
-            color: #000;
-            box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
-            transform: translateY(-2px);
-        }
-        .arkctl-launch-btn:hover .launch-prompt { color: #000; }
-        .arkctl-launch-btn:hover .launch-cursor { background: #000; }
-        .launch-prompt {
-            color: var(--accent-red);
-            font-weight: bold;
-            transition: color 0.3s;
-        }
-        .launch-cursor {
-            display: inline-block;
-            width: 8px;
-            height: 14px;
-            background: var(--accent-red);
-            animation: blink 1s infinite;
-            vertical-align: middle;
-            transition: background 0.3s;
-        }
-        .arkctl-hint {
-            margin-top: 1.2rem;
-            font-size: 0.7rem;
-            color: #444;
-            letter-spacing: 0.1rem;
-        }
-
-        /* --- MOBILE OPTIMIZATIONS --- */
-        @media (max-width: 768px) {
-            section { padding: 3.5rem 1.1rem; }
-            .section-title { font-size: 1.3rem; margin-bottom: 2rem; letter-spacing: 0.15rem; }
-
-            .hero { padding: 0 1rem; }
-            .hero-title { letter-spacing: 0.4rem; }
-            .hero-subtitle { font-size: 0.7rem; letter-spacing: 0.2rem; line-height: 1.5; }
-            .hero-stats {
-                margin-top: 1.8rem;
-                font-size: 0.6rem;
-                gap: 0.4rem 0.5rem;
-                letter-spacing: 0.12rem;
-            }
-
-            .grid-container { gap: 1.2rem; }
-            .card { padding: 1.6rem; }
-            .card h3 { font-size: 1rem; }
-            .card p { font-size: 0.85rem; }
-            .card-icon { font-size: 1.6rem; margin-bottom: 1rem; }
-
-            .terminal-body { padding: 1.2rem 0.9rem; }
-            .term-title { font-size: 0.7rem; }
-            .log-entry {
-                flex-wrap: wrap;
-                gap: 0.3rem 0.7rem;
-                margin-bottom: 0.7rem;
-            }
-            .timestamp { min-width: 0; font-size: 0.65rem; flex-shrink: 0; }
-            .command { min-width: 0; font-size: 0.7rem; flex-shrink: 0; }
-            .output { flex: 1 1 100%; font-size: 0.72rem; line-height: 1.5; }
-
-            .arkctl-launch-btn {
-                font-size: 0.78rem;
-                padding: 0.9rem 1.3rem;
-                letter-spacing: 0.12rem;
-            }
-            .arkctl-hint { font-size: 0.6rem; line-height: 1.6; }
-
-            .delta-foot { font-size: 0.7rem; line-height: 1.7; }
-
-            #collective p { font-size: 0.95rem !important; }
-
-            .email-link { font-size: 1.1rem; word-break: break-all; }
-            .pgp-container { font-size: 0.55rem; padding: 1rem; }
-            .pgp-header { font-size: 0.7rem; }
-            .copy-btn { padding: 4px 10px; font-size: 0.65rem; }
-
-            .arkctl-overlay { padding: 0.4rem; }
-            .arkctl-modal {
-                width: 100%;
-                height: 100%;
-                max-height: calc(100vh - 1rem);
-            }
-            .arkctl-body { padding: 1rem; font-size: 0.75rem; }
-            .arkctl-input-row { padding: 0.6rem 1rem; }
-            #arkctl-input { font-size: 0.85rem; }
-
-            nav { padding: 0.8rem 1rem; }
-            .nav-links { gap: 0.6rem 0.9rem; }
-            .nav-links a { font-size: 0.7rem; }
-
-            footer { padding: 2rem 1rem; }
-        }
-
-        @media (max-width: 480px) {
-            .hero-title { font-size: 2.5rem; letter-spacing: 0.25rem; }
-            .hero-subtitle { font-size: 0.62rem; letter-spacing: 0.15rem; }
-            .hero-stats { font-size: 0.55rem; gap: 0.3rem; }
-            .stat-sep { display: none; }
-            section { padding: 3rem 1rem; }
-            .section-title { font-size: 1.15rem; }
-            .terminal-body { padding: 1rem 0.7rem; }
-            .arkctl-launch-btn { padding: 0.75rem 1rem; font-size: 0.7rem; gap: 0.4rem; }
-            .nav-links a { font-size: 0.65rem; }
-        }
-    </style>
+/* ================= motion prefs / responsive ================= */
+@media (prefers-reduced-motion: reduce) {
+  html.js .ch-inner, html.js .hero-inner > * { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .scroll-cue, .hud-dot { animation: none; }
+  #boot { display: none; }
+  #cursor { display: none; }
+}
+@media (max-width: 640px) {
+  .chapter { padding: 12vh 20px; }
+  .numerals { gap: 36px; }
+  #plug { padding: 16px 28px; }
+  #theme-btn { top: 14px; right: 14px; }
+}
+</style>
 </head>
 <body>
 
-    <div class="cursor-dot" data-cursor-dot></div>
-    <div class="cursor-outline" data-cursor-outline></div>
+<canvas id="plankton" aria-hidden="true"></canvas>
 
-    <div class="scanline"></div>
-    <canvas id="neural-bg"></canvas>
+<div id="boot" aria-hidden="true">
+  <pre id="boot-log"></pre>
+  <div id="boot-skip">click to skip</div>
+</div>
 
-    <nav>
-        <a href="https://arkane.ch" class="logo-link">
-            <div class="logo">A R K A N E</div>
-        </a>
-        <ul class="nav-links">
-            <li><a href="#capabilities">VECTORS</a></li>
-            <li><a href="#logs">EXEC_LOG</a></li>
-            <li><a href="#trajectory">TRAJECTORY</a></li>
-            <li><a href="#delta">DELTA</a></li>
-            <li><a href="#collective">COLLECTIVE</a></li>
-            <li><a href="#contact">COMMS</a></li>
-        </ul>
-    </nav>
+<div id="powerdown" aria-hidden="true"><div class="pd-line"></div></div>
 
-    <section class="hero">
-        <h1 class="hero-title">A R K A N E</h1>
-        <p class="hero-subtitle">RESEARCH COLLECTIVE // LOW-LEVEL ENGINEERING // PROPRIETARY SYSTEMS</p>
-        <div class="hero-stats">
-            <span class="stat-pulse"></span>
-            <span class="stat-label">ONLINE</span>
-            <span class="stat-sep">·</span>
-            <span class="stat-label">PHASE</span>
-            <span class="stat-value">5/7</span>
-            <span class="stat-sep">·</span>
-            <span class="stat-value">4</span>
-            <span class="stat-label">CELLS</span>
-            <span class="stat-sep">·</span>
-            <span class="stat-label">UPTIME</span>
-            <span class="stat-value" id="telemetry-uptime">00:00:00</span>
-            <span class="stat-sep">·</span>
-            <span class="stat-value" id="telemetry-fps">60</span>
-            <span class="stat-label">FPS</span>
-        </div>
-    </section>
+<aside id="hud" aria-hidden="true">
+  <div class="hud-row"><span class="hud-dot"></span>arkane v0.17 · up <span id="hud-up">00:00</span> · cells <span id="hud-cells">6/6</span></div>
+  <div class="hud-row hud-sys" id="hud-sys">SYS_WAIT</div>
+</aside>
 
-    <section id="capabilities">
-        <h2 class="section-title">01_RESEARCH_VECTORS</h2>
-        <div class="grid-container">
-            <div class="card">
-                <div class="card-icon">◉</div>
-                <h3>ARKANE OS</h3>
-                <p>
-                    An exokernel for AI workloads. <strong>Cells</strong> replace processes — isolated address space, capability-bound, crash-contained. The kernel verifies identity at bind, then steps out of the data path. Written in Rust, <span style="color:#888;">no_std</span>, <span style="color:#888;">no_main</span>.
-                </p>
-            </div>
-            <div class="card">
-                <div class="card-icon">◬</div>
-                <h3>HARDWARE</h3>
-                <p>
-                    Low-latency interconnects, IOMMU primitives, FPGA prototyping for capability enforcement at the silicon boundary. Target: deterministic paths from NIC to cell with the kernel out of the loop. Bring-up work across <span style="color:#888;">x86_64</span>, <span style="color:#888;">arm64</span>, <span style="color:#888;">ppc64</span>.
-                </p>
-            </div>
-            <div class="card">
-                <div class="card-icon">◈</div>
-                <h3>SYNTHETIC AGENTS</h3>
-                <p>
-                    Long-horizon agents executing inside capability sandboxes. Every syscall is a token, every effect is auditable. We are more interested in <strong>reliable autonomy</strong> than leaderboard scores — agents that can be trusted with real authority.
-                </p>
-            </div>
-            <div class="card">
-                <div class="card-icon">◱</div>
-                <h3>CAPITAL</h3>
-                <p>
-                    Self-funded. Algorithmic strategies run on top of our own stack — no shared dependencies with public cloud, no third-party risk in the data path. Capital is the substrate for research, not the objective.
-                </p>
-            </div>
-        </div>
-    </section>
+<button id="theme-btn" type="button" aria-label="toggle theme">◐ dark</button>
+<div id="cursor" aria-hidden="true"></div>
 
-    <section id="logs">
-        <h2 class="section-title">02_EXECUTION_LOG</h2>
-        <div class="terminal-wrapper">
-            <div class="terminal-header">
-                <div class="dot red"></div>
-                <span class="term-title">root@arkane:~/core</span>
-            </div>
-            <div class="terminal-body">
-                <div class="log-entry">
-                    <span class="timestamp">[BOOT]</span>
-                    <span class="command">UART</span>
-                    <span class="output">uart_16550 // serial out armed &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
+<main>
 
-                <div class="log-entry">
-                    <span class="timestamp">[BOOT]</span>
-                    <span class="command">GDT/IDT</span>
-                    <span class="output">descriptor tables + 32 exception handlers &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
+<!-- ============ HERO ============ -->
+<header id="hero">
+  <canvas id="hero-canvas" aria-hidden="true"></canvas>
+  <div class="hero-inner">
+    <div class="kicker">Arkane OS — capability exokernel</div>
+    <h1>A system of cells.<br><em>Like everything that survives.</em></h1>
+    <p class="hero-sub">Every workload — including your AI — lives in its own
+    hardware-isolated cell. Written in Rust. <b>24&nbsp;syscalls. Nothing else.</b></p>
+  </div>
+  <div class="scroll-cue" aria-hidden="true"><span></span></div>
+</header>
 
-                <div class="log-entry">
-                    <span class="timestamp">[MEM]</span>
-                    <span class="command">FRAME</span>
-                    <span class="output">physical allocator: 8192 pages mapped &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[CAP]</span>
-                    <span class="command">TABLE</span>
-                    <span class="output">capability_table[64] initialized &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[CAP]</span>
-                    <span class="command">CSPACE</span>
-                    <span class="output">per-cell cspaces armed // structural isolation &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[CPU]</span>
-                    <span class="command">SMEP/SMAP</span>
-                    <span class="output">CR4 bits set // ring-0 won't touch user pages &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[CELL]</span>
-                    <span class="command">SPAWN</span>
-                    <span class="output">cell_a // pid=1 &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[CELL]</span>
-                    <span class="command">SPAWN</span>
-                    <span class="output">cell_b // pid=2 &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[FAULT]</span>
-                    <span class="command">RECOVER</span>
-                    <span class="output">cell_a: page_fault @ 0x0 → isolation held &nbsp;<span style="color: #00ff00;">RECOVERED</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[CELL]</span>
-                    <span class="command">LIVE</span>
-                    <span class="output">cell_b uninterrupted // crash containment <span style="color: #00ff00;">PROVEN</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[SCHED]</span>
-                    <span class="command">RR/100HZ</span>
-                    <span class="output">round-robin scheduler armed &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[VM]</span>
-                    <span class="command">PML4</span>
-                    <span class="output">per-cell page tables // ring-3 userspace &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[CAP]</span>
-                    <span class="command">ED25519</span>
-                    <span class="output">signed capability tokens // unforgeable &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[CAP]</span>
-                    <span class="command">DELEGATE</span>
-                    <span class="output">monotonic // rights only reducible, never elevated &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[CAP]</span>
-                    <span class="command">REVOKE</span>
-                    <span class="output">transitive // children purged on parent revoke &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[LOAD]</span>
-                    <span class="command">ACF</span>
-                    <span class="output">signed cell loader + virtio-blk // content-addressed &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[NET]</span>
-                    <span class="command">VIRTIO-NET</span>
-                    <span class="output">device discovery + MSI-X // INTx storms eliminated &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[NET]</span>
-                    <span class="command">SMOLTCP</span>
-                    <span class="output">tcp stack in libos // curl /health → 200 OK &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[OPS]</span>
-                    <span class="command">MTLS</span>
-                    <span class="output">gw-admin // http2 + rustls // client-cert verified &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[OPS]</span>
-                    <span class="command">APPLY</span>
-                    <span class="output">arkctl apply manifest // diff → spawn // end-to-end &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[OPS]</span>
-                    <span class="command">HEALER</span>
-                    <span class="output">drift probe // dead-cell detection armed &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp">[BLOB]</span>
-                    <span class="command">STORE</span>
-                    <span class="output">multi-frame blob storage + user syscalls &nbsp;<span style="color: #00ff00;">OK</span></span>
-                </div>
-
-                <div class="log-entry">
-                    <span class="timestamp" id="current-time">[Calculating...]</span>
-                    <span class="command">PHASE-5</span>
-                    <span class="output">write-ahead log → durable storage // arming <span class="cursor"></span></span>
-                </div>
-            </div>
-        </div>
-
-        <div class="arkctl-launcher">
-            <button class="arkctl-launch-btn" onclick="openArkctl()">
-                <span class="launch-prompt">arkctl&gt;</span>
-                <span>OPEN CONTROL PLANE</span>
-                <span class="launch-cursor"></span>
-            </button>
-            <p class="arkctl-hint">// read-only management · no exec into cells · ed25519-bound</p>
-        </div>
-    </section>
-
-
-    <section id="trajectory">
-        <h2 class="section-title">03_TRAJECTORY</h2>
-        <p style="text-align:center; max-width:840px; margin:0 auto 3rem; color:#bbb; font-size:0.95rem; line-height:1.7;">
-            Arkane OS Exokernel: ring-3 isolated cells with Ed25519 capability signing,
-            per-cell address spaces, and cryptographically-enforced delegation.
-            Network stack, mTLS control plane, and signed cell deployment are
-            <span style="color:var(--accent-red);">working in QEMU</span>.
-            Persistent storage is in active development.
-        </p>
-        <div class="trajectory">
-            <div class="phase done">
-                <div class="phase-num">01</div>
-                <div class="phase-dot"></div>
-                <div class="phase-label">Exokernel</div>
-            </div>
-            <div class="phase done">
-                <div class="phase-num">02</div>
-                <div class="phase-dot"></div>
-                <div class="phase-label">Security</div>
-            </div>
-            <div class="phase done">
-                <div class="phase-num">03</div>
-                <div class="phase-dot"></div>
-                <div class="phase-label">Cell Loading</div>
-            </div>
-            <div class="phase done">
-                <div class="phase-num">04</div>
-                <div class="phase-dot"></div>
-                <div class="phase-label">Network</div>
-            </div>
-            <div class="phase active">
-                <div class="phase-num">05</div>
-                <div class="phase-dot"></div>
-                <div class="phase-label">Management</div>
-            </div>
-            <div class="phase">
-                <div class="phase-num">06</div>
-                <div class="phase-dot"></div>
-                <div class="phase-label">AI Interface</div>
-            </div>
-            <div class="phase">
-                <div class="phase-num">07</div>
-                <div class="phase-dot"></div>
-                <div class="phase-label">Production</div>
-            </div>
-        </div>
-        <div class="subphase-wrap">
-            <div class="subphase-head">// PHASE 05 BREAKDOWN — <span class="sp-accent">PERSISTENT STORAGE FOUNDATION</span></div>
-            <div class="subphase-list">
-                <div class="subphase done">
-                    <div class="sp-marker"></div>
-                    <div class="sp-body">
-                        <div class="sp-title">Content-addressed blob store<span class="sp-tag">done</span></div>
-                        <div class="sp-desc">multi-frame backing · blake3 dedup · refcounted GC · up to 4 MiB / blob</div>
-                    </div>
-                </div>
-                <div class="subphase done">
-                    <div class="sp-marker"></div>
-                    <div class="sp-body">
-                        <div class="sp-title">Capability-gated storage syscalls<span class="sp-tag">done</span></div>
-                        <div class="sp-desc">chunked store / retrieve / release · authority-bound · cell-driven</div>
-                    </div>
-                </div>
-                <div class="subphase active">
-                    <div class="sp-marker"></div>
-                    <div class="sp-body">
-                        <div class="sp-title">Write-ahead log → durable storage<span class="sp-tag">active</span></div>
-                        <div class="sp-desc">crash-consistent apply pipeline · recovery replay at boot</div>
-                    </div>
-                </div>
-                <div class="subphase queued">
-                    <div class="sp-marker"></div>
-                    <div class="sp-body">
-                        <div class="sp-title">Cluster state survives reboot<span class="sp-tag">queued</span></div>
-                        <div class="sp-desc">persistent control-plane view · no manual re-apply after restart</div>
-                    </div>
-                </div>
-                <div class="subphase queued">
-                    <div class="sp-marker"></div>
-                    <div class="sp-body">
-                        <div class="sp-title">Deterministic apply de-duplication<span class="sp-tag">queued</span></div>
-                        <div class="sp-desc">content-hashed apply IDs · idempotent re-runs</div>
-                    </div>
-                </div>
-                <div class="subphase queued">
-                    <div class="sp-marker"></div>
-                    <div class="sp-body">
-                        <div class="sp-title">Multi-request gateway reliability<span class="sp-tag">queued</span></div>
-                        <div class="sp-desc">sequential apply over mTLS without socket teardown races</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <p style="text-align: center; max-width: 720px; margin: 2.5rem auto 0; color: #666; font-size: 0.8rem; line-height: 1.7;">
-            phase-7 is where the system can run real applications — not where it is production-grade. Production hardening (HA, certifications, multi-site, supply chain) lives years past phase 7. We say this out loud because too many systems pretend otherwise.
-        </p>
-    </section>
-
-
-    <section id="delta">
-        <h2 class="section-title">04_DELTA</h2>
-        <div class="delta-wrap">
-            <div class="delta-scroll">
-                <table class="delta-table">
-                    <thead>
-                        <tr>
-                            <th>Feature</th>
-                            <th>Linux</th>
-                            <th>Linux + K8s</th>
-                            <th class="col-arkane">Arkane</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="feature">Workload Isolation</td>
-                            <td class="cell-mark"><span class="mark-no">✗</span></td>
-                            <td class="cell-mark"><span class="mark-mid">~</span></td>
-                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
-                        </tr>
-                        <tr>
-                            <td class="feature">Network Isolation</td>
-                            <td class="cell-mark"><span class="mark-no">✗</span></td>
-                            <td class="cell-mark"><span class="mark-mid">~</span></td>
-                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
-                        </tr>
-                        <tr>
-                            <td class="feature">Audit Mandatory</td>
-                            <td class="cell-mark"><span class="mark-no">✗</span></td>
-                            <td class="cell-mark"><span class="mark-no">✗</span></td>
-                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
-                        </tr>
-                        <tr>
-                            <td class="feature">Audit Tamper-Proof</td>
-                            <td class="cell-mark"><span class="mark-no">✗</span></td>
-                            <td class="cell-mark"><span class="mark-no">✗</span></td>
-                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
-                        </tr>
-                        <tr>
-                            <td class="feature">No Shell Access</td>
-                            <td class="cell-mark"><span class="mark-no">✗</span></td>
-                            <td class="cell-mark"><span class="mark-no">✗</span></td>
-                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
-                        </tr>
-                        <tr>
-                            <td class="feature">Immutable Binaries</td>
-                            <td class="cell-mark"><span class="mark-no">✗</span></td>
-                            <td class="cell-mark"><span class="mark-mid">~</span></td>
-                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
-                        </tr>
-                        <tr>
-                            <td class="feature">AI-Agent Sandbox</td>
-                            <td class="cell-mark"><span class="mark-no">✗</span></td>
-                            <td class="cell-mark"><span class="mark-mid">~</span></td>
-                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
-                        </tr>
-                        <tr>
-                            <td class="feature">Blast Radius</td>
-                            <td>High</td>
-                            <td>Medium</td>
-                            <td class="col-arkane"><span class="mark-yes">Single cell</span></td>
-                        </tr>
-                        <tr>
-                            <td class="feature">Direct Hardware Access</td>
-                            <td class="cell-mark"><span class="mark-no">✗</span></td>
-                            <td class="cell-mark"><span class="mark-no">✗</span></td>
-                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
-                        </tr>
-                        <tr>
-                            <td class="feature">RAM Dedup (AI Models)</td>
-                            <td class="cell-mark"><span class="mark-no">✗</span></td>
-                            <td class="cell-mark"><span class="mark-no">✗</span></td>
-                            <td class="cell-mark col-arkane"><span class="mark-yes">✓</span></td>
-                        </tr>
-                        <tr>
-                            <td class="feature">Kernel I/O Overhead</td>
-                            <td>High</td>
-                            <td>High</td>
-                            <td class="col-arkane"><span class="mark-yes">Minimal</span></td>
-                        </tr>
-                        <tr>
-                            <td class="feature">Deploy Complexity</td>
-                            <td>High</td>
-                            <td>Very High</td>
-                            <td class="col-arkane"><span class="mark-yes">Minimal</span></td>
-                        </tr>
-                        <tr>
-                            <td class="feature">Applications</td>
-                            <td>Native</td>
-                            <td>Native</td>
-                            <td class="col-arkane">via MicroVM <span style="color:#666;">// native: none / roadmap</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="delta-foot">
-                <span class="key-yes">✓</span>&nbsp; supported by default &nbsp;&nbsp;//&nbsp;&nbsp;
-                <span class="key-mid">~</span>&nbsp; possible, but not by default — requires manual configuration &nbsp;&nbsp;//&nbsp;&nbsp;
-                <span class="key-no">✗</span>&nbsp; not supported<br>
-                Native application support is on the roadmap. Today, legacy workloads run inside a MicroVM cell. We show this openly because the people who would ask are the people who matter.
-            </div>
-        </div>
-    </section>
-
-
-    <section id="collective">
-        <h2 class="section-title">05_THE_COLLECTIVE</h2>
-        <div style="max-width: 800px; color: #aaa;">
-            <p style="margin-bottom: 2rem; font-size: 1.1rem;">
-                ARKANE is a small team of developers and researchers. We are currently not selling products.
-                We forge synthetic intelligence to navigate the entropy of modern systems. We engineer technology that aligns with human intent rather than exploiting it.
-            </p>
-            <div style="border-left: 2px solid var(--accent-red); padding-left: 20px; font-style: italic; color: #ddd; margin-bottom: 2rem;">
-                "Financial success is merely a byproduct of technical excellence."
-            </div>
-            <p style="color: #888; font-size: 0.9rem;">
-                ARKANE operates autonomously. Yet, we scan for <strong>singularities</strong>.
-                If your intellect forms a <strong>convergence point</strong> of neural architectures, system engineering, and/or financial dynamics,
-                we welcome you to the collective.
-            </p>
-        </div>
-    </section>
-
-    <section id="contact">
-        <h2 class="section-title">06_ENCRYPTED_COMMS</h2>
-        <div class="contact-grid">
-            <div>
-                <a href="mailto:info@arkane.ch" class="email-link">info@arkane.ch</a>
-                <p style="margin-top: 0.5rem; color: #666; font-size: 0.9rem;">
-                    // USE PGP FOR SENSITIVE DATA
-                </p>
-            </div>
-
-            <div class="pgp-wrapper">
-                <div class="pgp-header">
-                    <span>PGP PUBLIC KEY BLOCK (4096-bit RSA)</span>
-                    <div class="pgp-controls">
-                        <button id="toggle-btn" class="copy-btn" onclick="togglePgp()">[ EXPAND ]</button>
-                        <button class="copy-btn" onclick="copyPgp()">[ COPY_KEY ]</button>
-                    </div>
-                </div>
-<div id="pgp-content" class="pgp-container collapsed">-----BEGIN PGP PUBLIC KEY BLOCK-----
-
-mQINBGlhT0cBEADThad1c1n/8M162A6ZJEFKfS5xLHklHpEeUCay5VpGCBZrQ4rh
-i8PbR0o8gy73/l6gVuvz1gU1tt87mngX01Zyf6yF7AFMw8JQSxLA5hROPoG3QKvj
-WuLG+0LYBuegGSRLCZYtpvAdoZzJKrezDFNNvO1uxHaLv9u37q4gUuDrmyJvS9it
-WtNWAlEkmHLjRFxd/gDDce30+OvyorxG30mlTzk/aEFDxRK84BEPC2X+uilLmiOA
-6xySnfAKlmFbFRlJWSKiShZ+O2vhmGOmjyq9Vgkp9LlxUx8IkJygYy20ShAcaMn8
-kZCjh6wZCKGRiDYqn2tOJC0MP5zi7WHKxkhEILaTYxWBlrCQcsjFkd3vExsmxwZC
-0TuP+2Le8qfKpG67Sgg9Vvv24p/TjkYmHlCRbovpZ3GCKRENxrvOZJjehlExotq+
-E2AKpb5cxiC0ibrlM7Qd0VhPFXkjSfl26CetubQNno1n5xRdHt/5CKg6ldcuIzHs
-XI60ZHoHRbv77VOa+WfudTtZvB9qPcO4qHBRGwyBdylaSzammYtLmszaU0pBDI+V
-EU023Xw4BNfpira6ZiSbkmpN7WbpTWHNe6H55pmdosxeHwHFByCm3dbmwa+5gXqQ
-5c1i0XZetBFOMyLNWi0r3JnKalrV1xBQEoSwGpfv2JW9Jmaouwmk4Rl1QwARAQAB
-tBdhcmthbmUgPGluZm9AYXJrYW5lLmNoPokCTgQTAQoAOBYhBEbJLfRyDIRWwszw
-YxAO6CxtdBxQBQJpYU9HAhsDBQsJCAcCBhUKCQgLAgQWAgMBAh4BAheAAAoJEBAO
-6CxtdBxQHQAP/jwz2v0rgr5eDw381tyfzAlekcp4g6SM0zOeCc6b4epZPHV6RLwF
-AtjLOYex4wPB2ujhlbHNSmgTWK1v5faIQKJqyJ6Vu1QfAKAWN93YYsjhTmszx9LU
-oYTWkAaqb8w4+VO5uWtxDGKls3aTVhS+1wMZPr2gjsdl1w2/KmoeapE/zEkpvPaB
-KqI4rIOq9iaclJiVwQHiCxhTfgBZGHY/lPPDvbXG/AYE4nuNT9E8tLKMD0qFfzzs
-SmtLFBTyNIS1MqIKZrnkttE8z1RTLR81r2ji/3o4l6r7Wq6wQy6O279agfos3Inj
-CIvGMGrFjfy7a096ZsP4VxnViaUTUOnSsp2i4fPVLCjEnVBj+J9M47Ftuo8eSmwu
-fIkh4q6SOB82PlL7Iyyjb1oKX2wUOZJVWojmSF+RAaVeEOrPTf6IY5FIzYWDO0ao
-7n7cy258XZ29uwyE6tsPYt+eptUKZWxsVJLkkIDzc6L2vLfx5eBt60+SETwyksCR
-XbzTVUhHmLJgRgI4iNTAJivhxc6ldy4Wo03cvQuRRAvNkp8eFpT6xV6dgVPaFPBZ
-gBUnjqGpgu4b1uy/AvaaYQ4y9EaB+xus2rLinnqVTzqH4h6Dc0L0cVVC57RFYelo
-IPgA05vtbE4wgQku9b68ExzBpiQLKtqy1SkbXrFZ0LvKULI2ZpebeFxguQINBGlh
-T0cBEADKATDZZT4Jsg9pY6I0B58yTAxcdqgH4wXMD6eGwqU+q5UhTSYpwg6JntvG
-TwtUE0zLBsWdqZvcCKJJue2gU3dkvf7kPehnTWCtfyl/5DeELHEwNLo+gwyGQfAK
-jxNfGrwdlBNaTGz7eEno4LzVPHJyYFVSrR4itRIU1NRZI+7Eo7I4nxuRfV5E0ZVW
-Jao5z4tcZySJnj+VXf3OuejOcB9xr0xVXrvdAKf5jOp1RAsi7Ijvi9upt3g8AAY+
-FiR4cvgn7vtU7CYuqBDwsJDKe8krLYF8Drcjzl0vzz76WMyTs3b3BYGH7cztIoqp
-CivtuEbzZe77a82E4UQdSYPDEvAcARamXLPVFMdF1iKqNCOMGYyd0fa4Hn8UBAzX
-vjwf0xx2mYwgaCDsjBKDEUcRyCp1qdDdmGb1eLiRo0qeDPARQHrb2dO03PCu+IN0
-mrXFqNpMBkF0ZrmwZTGVog79UGNyOsoh0stjFgjFu8gqJIRrZqUkH44vyI8Y+pgR
-pxKFUf6Gnp/0QP7mFqo2ADbAR0ZZZ9R/4uSqyWgakx/FJwvp/PAUBl44N9u+HKZD
-VnvQ548N9pDWXLs077tLiTV5t3XEhVU1mo+d+//9JOm/WPqJZK4mKoV7aW43V0OO
-TJRfmrRySc1rlycsmi4V6eUtQruccEZSHELqn7k+N6JRy9xcGQARAQABiQI2BBgB
-CgAgFiEERskt9HIMhFbCzPBjEA7oLG10HFAFAmlhT0cCGwwACgkQEA7oLG10HFBL
-jw//X5/uUBFL4YgDaYOt6UIfkmtDpb92UMGA8cdqiGkD1Fx3nu/vw6dmaipdNizI
-SfcGaHinCGkEQZgnltbFfaH0qyJlCXKlf53VkxvPfGG3KGhm3K1bzvDvLlJ5bbnm
-tstSPJ+a+CXZcD+PTwRxg3FDUG/W7YqkDBc7C8j3k2fFMVI+QhOzCwX5grJ4xN/Z
-EyYfA8AhfzIsmX7lhIl3hqIU3EqBMXMOocclBs17cyDYMvPAE0ulXNuG1QwZge3K
-593GTrSYZU8wYy2IMcrBZ0yfoYDCwzCilgVIZ2orsoBcjzf8sVYOvwn4a/f6Ezdy
-1S9TiI3wQ5/g+3GoFO/QfuvY1XnGCml2IMRTVaLMX5UUn07nA4w2Ovif9Mux90US
-bCEWPJc55ivjb9bbxsPF/lEQNtVbWZtf9IfCTxUcX2y4TDxUJGFDA9YevR3Axk8k
-XRj5shzLVUA0LfwSmL5h9PFWg8J1XJ/iyEXhUqjoRruqAQOugiklOi7QzEA5nYy3
-Ux2i/ejV7jMdQoVku3ff2ayPVmMxZ5OOszb3cH9AY/rEcR5KSs4d4cojct74TeIQ
-fx2+vnkfp0C9PU7wjqqW+L+v/mKTDXq1C5GifKCEcgCWLFEuOUygoKMZyvIkU447
-20QkYW5YzOoZv6mXD8Nib1xR7jWgro7c9s7TlF4dkYFMjpY=
-=bySR
------END PGP PUBLIC KEY BLOCK-----</div>
-            </div>
-        </div>
-    </section>
-
-    <footer>
-        <p>A R K A N E &copy; 2026</p>
-        <p style="opacity: 0.4; margin-top: 0.5rem; font-size: 0.7rem;">NO TRACKING // NO COOKIES // JUST HTML</p>
-    </footer>
-
-    <div id="arkctl-overlay" class="arkctl-overlay hidden" aria-hidden="true">
-        <div class="arkctl-modal">
-            <div class="terminal-header">
-                <div class="dot red"></div>
-                <span class="term-title">arkctl // local cell // v0.1.0</span>
-                <button class="arkctl-close" onclick="closeArkctl()">[ ESC TO CLOSE ]</button>
-            </div>
-            <div id="arkctl-output" class="arkctl-body"></div>
-            <div class="arkctl-input-row">
-                <span class="arkctl-prompt">arkctl&gt;</span>
-                <input id="arkctl-input" autocomplete="off" spellcheck="false" autocapitalize="off" />
-            </div>
-        </div>
+<!-- ============ 01 PRINCIPLE ============ -->
+<section class="chapter" id="principle">
+  <div class="spawn-strip" data-cell="principle"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">01 · Principle</div>
+    <h2>What does not exist cannot be exploited.</h2>
+    <p class="prose">Run a language model in a bank or a hospital today and it stands
+    on thirty years of legacy: four hundred syscalls, shells, dynamic linkers.
+    Arkane starts from the other end — from <em>nothing</em> — and only adds
+    what can be proven.</p>
+    <div class="numerals">
+      <div class="nume"><span class="n">24</span><span class="l">syscalls,<br>the entire API</span></div>
+      <div class="nume"><span class="n">12×</span><span class="l">speedup in<br>workload cells</span></div>
+      <div class="nume"><span class="n">0</span><span class="l">lines of C.<br>POSIX. shell.</span></div>
     </div>
+  </div>
+</section>
 
-    <script>
-        // --- CUSTOM CURSOR LOGIC ---
-        const cursorDot = document.querySelector('[data-cursor-dot]');
-        const cursorOutline = document.querySelector('[data-cursor-outline]');
-        let isHovering = false;
-        let mouseX = 0;
-        let mouseY = 0;
-        let outlineX = 0;
-        let outlineY = 0;
+<!-- ============ 02 ISOLATION ============ -->
+<section class="chapter" id="isolation">
+  <div class="spawn-strip" data-cell="isolation"></div>
+  <div class="ch-inner">
+    <div class="ch-no">02 · Isolation</div>
+    <h2>Try to break it.</h2>
+    <p class="prose">This is the real v0.17 cluster — six cells around a kernel, each
+    with its own page table. Isolation is enforced by the MMU, not by policy.
+    <b>Click a cell and watch what happens.</b> Then try killing
+    <b>gw-admin</b> — the healer itself.</p>
+    <div class="playground-frame">
+      <canvas id="play-canvas"></canvas>
+      <div class="play-stats mono">
+        <span>healer <b class="ok" id="stat-healer">online</b></span>
+        <span class="sep">·</span>
+        <span>respawns <b id="stat-respawns">0</b></span>
+        <span class="sep">·</span>
+        <span>drift pending <b id="stat-drift">0</b></span>
+        <span class="sep">·</span>
+        <span>kernel <b class="ok">unimpressed</b></span>
+      </div>
+    </div>
+    <p class="caption">Crash → <span class="mono">HEALER_DRIFT_DEAD</span> → respawn: gw-admin compares
+    desired and observed state and heals the drift. Kill gw-admin and <b>nothing comes back</b> —
+    dead cells pile up as pending drift — until the kernel restores the healer from the signed
+    boot chain, which then heals everything at once. The kernel itself never flinches.</p>
+  </div>
+</section>
 
-        outlineX = window.innerWidth / 2;
-        outlineY = window.innerHeight / 2;
+<!-- ============ 03 LAW ============ -->
+<section class="chapter" id="law">
+  <div class="spawn-strip" data-cell="law"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">03 · Law</div>
+    <h2>Two keys, one law.</h2>
+    <p class="prose">The developer signs the <b>shape</b> of a cell into its binary.
+    The operator provides the <b>values</b> in the manifest. The kernel enforces both —
+    structurally, default-deny, at every spawn. Access exists only as a
+    <b>capability</b>: an unforgeable token, derivable and transitively revocable.</p>
+    <div class="contract mono">
+      <div class="ct-head">cells/inference · signed ed25519 ✓</div>
+      <pre><span class="m">#[arkane_contract(</span>
+    needs(memory ≤ 512 MiB, share::read),
+    <span class="r">forbid(net_in, net_out, spawn)</span>
+<span class="m">)]</span></pre>
+    </div>
+    <p class="caption">What is forbidden here is not monitored — it is <b>never wired up</b>.</p>
+  </div>
+</section>
 
-        window.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
+<!-- ============ 04 CAGE ============ -->
+<section class="chapter" id="cage">
+  <div class="spawn-strip" data-cell="cage"></div>
+  <div class="ch-inner">
+    <div class="ch-no">04 · Cage</div>
+    <h2>The AI that cannot phone home.</h2>
+    <p class="prose">A real language model runs inside the inference cell — its own
+    <code>no_std</code> engine, token-identical to the reference, twelve times faster
+    with the SSE2 workload target. It holds no network capability. The only thing it
+    can do is <b>answer whoever called it</b> — and the only cell holding a network
+    card is the gateway, where every request is audited.</p>
+    <div class="term-frame">
+      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span>gw-public :8081 · /v1/chat/completions</div>
+      <pre class="mono" id="term-body"></pre>
+    </div>
+  </div>
+</section>
 
-            cursorDot.style.left = `${mouseX}px`;
-            cursorDot.style.top = `${mouseY}px`;
+<!-- ============ 05 PROOF ============ -->
+<section class="chapter" id="proof">
+  <div class="spawn-strip" data-cell="proof"></div>
+  <div class="ch-inner narrow center">
+    <div class="ch-no">05 · Proof</div>
+    <h2>Pull the plug.</h2>
+    <p class="prose">The cluster stores its state crash-atomically — Blake3-chained,
+    double-buffered, reboot-proven. This page does the same.
+    <b>Cut the power and see what's left.</b></p>
+    <button id="plug" type="button">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.5a8 8 0 1 0 11.4 0"/></svg>
+      <span>Cut the power</span>
+    </button>
+    <div id="restored" hidden></div>
+    <p class="caption">In the real system this test is called <span class="mono">make t4-demo</span>:
+    apply → kernel reboot → the state lives, no re-apply.</p>
+  </div>
+</section>
 
-            const target = e.target;
-            if (target.matches('a, button, .card, .copy-btn, .logo') || target.closest('a') || target.closest('.card') || target.closest('button')) {
-                if (!isHovering) {
-                    isHovering = true;
-                    document.body.classList.add('hovering');
-                }
-            } else {
-                if (isHovering) {
-                    isHovering = false;
-                    document.body.classList.remove('hovering');
-                }
-            }
+<!-- ============ 06 CHRONICLE ============ -->
+<section class="chapter" id="chronicle">
+  <div class="spawn-strip" data-cell="chronicle"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">06 · Chronicle</div>
+    <h2>Every version a proof.</h2>
+    <ul class="chron">
+      <li class="done"><span class="v">v0.13</span><span><b>Persistence</b> — Blake3 write-ahead log, crash recovery</span></li>
+      <li class="done"><span class="v">v0.14</span><span><b>Kernel minimization</b> — state survives the reboot</span></li>
+      <li class="done"><span class="v">v0.15</span><span><b>Trust anchors</b> — three-stage Ed25519 signature chain</span></li>
+      <li class="done"><span class="v">v0.16</span><span><b>Cell contracts</b> — two keys become law</span></li>
+      <li class="now"><span class="v">v0.17</span><span><b>AI workloads</b> — in-cell inference, chat API, MCP</span></li>
+      <li><span class="v">v0.18</span><span>Preemption, multicore, exclusive core pinning</span></li>
+      <li><span class="v">v0.19</span><span>Observability &amp; signed audit log</span></li>
+      <li><span class="v">v1.0</span><span>Production — built for banks, clinics, custody</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ CODA ============ -->
+<footer id="coda">
+  <p class="coda-line">What does not exist<br><em>cannot break.</em></p>
+  <div class="colophon">arkane os · written in rust · not a single line of c · mmxxvi</div>
+</footer>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/ScrollTrigger.min.js" defer></script>
+
+<script>
+/* ============ Arkane Organism — cell simulation ============ */
+(function () {
+  'use strict';
+
+  const TAU = Math.PI * 2;
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* theme palettes for everything canvas-drawn */
+  const PALETTES = {
+    dark: {
+      cells: { sage: '#9db89a', coral: '#e8927c', ice: '#a8c5d6', sand: '#d6c08f' },
+      kernel: '236,231,221',
+      label: 'rgba(236,231,221,0.55)',
+      deadLabel: 'rgba(232,146,124,0.5)',
+      dead: 'rgba(232,146,124,0.16)',
+      filament: '214,192,143',
+      plankton: '236,231,221',
+    },
+    light: {
+      cells: { sage: '#66835f', coral: '#c2613f', ice: '#5d7f96', sand: '#a98f54' },
+      kernel: '36,31,23',
+      label: 'rgba(36,31,23,0.6)',
+      deadLabel: 'rgba(194,97,63,0.6)',
+      dead: 'rgba(194,97,63,0.22)',
+      filament: '169,143,84',
+      plankton: '36,31,23',
+    },
+  };
+  const pal = () => PALETTES[document.documentElement.dataset.theme] || PALETTES.dark;
+
+  class Cell {
+    constructor(opts) {
+      this.label = opts.label || null;
+      this.role = opts.role || 'cell';          // cell | healer | kernel
+      this.colorKey = opts.color;               // semantic key into palette
+      this.baseR = opts.r;
+      this.home = { x: opts.x, y: opts.y };
+      this.pos = { x: opts.x, y: opts.y };
+      this.phase = Math.random() * TAU;
+      this.driftSeed = Math.random() * 1000;
+      this.points = opts.points || 16;
+      this.alive = true;
+      this.scale = 1;
+    }
+    color() { return pal().cells[this.colorKey] || this.colorKey; }
+    center(w, h) { return { x: this.pos.x * w, y: this.pos.y * h }; }
+
+    update(t, dt, w, h, mouse, others, drift) {
+      const s = this.driftSeed;
+      const dx = Math.sin(t * 0.00013 + s) * drift + Math.sin(t * 0.00007 + s * 2) * drift * 0.6;
+      const dy = Math.cos(t * 0.00011 + s * 3) * drift + Math.cos(t * 0.00005 + s) * drift * 0.5;
+      let tx = this.home.x + dx, ty = this.home.y + dy;
+
+      if (mouse.active) {
+        const cx = tx * w, cy = ty * h;
+        const mdx = cx - mouse.x, mdy = cy - mouse.y;
+        const d = Math.hypot(mdx, mdy);
+        const reach = this.baseR + 130;
+        if (d < reach && d > 1) {
+          const f = (1 - d / reach) * 0.04;
+          tx += (mdx / d) * f;
+          ty += (mdy / d) * f;
+        }
+      }
+      for (const o of others) {
+        if (o === this || !o.alive) continue;
+        const ax = (tx - o.pos.x) * w, ay = (ty - o.pos.y) * h;
+        const d = Math.hypot(ax, ay);
+        const min = (this.baseR + o.baseR) * 1.05;
+        if (d < min && d > 1) {
+          const f = (1 - d / min) * 0.02;
+          tx += (ax / d) * f;
+          ty += (ay / d) * f;
+        }
+      }
+      this.pos.x += (tx - this.pos.x) * Math.min(1, dt * 0.0018);
+      this.pos.y += (ty - this.pos.y) * Math.min(1, dt * 0.0018);
+      if (this.alive && this.scale < 1) this.scale = Math.min(1, this.scale + dt * 0.0016);
+    }
+
+    membrane(t, w, h, wobble) {
+      const c = this.center(w, h);
+      const pts = [];
+      const grow = this.scale < 1 ? 1 - Math.pow(1 - this.scale, 3) : 1;
+      const R = this.baseR * grow;
+      for (let i = 0; i < this.points; i++) {
+        const a = (i / this.points) * TAU;
+        const r = R * (1
+          + wobble * Math.sin(t * 0.0011 + i * 1.7 + this.phase)
+          + wobble * 0.7 * Math.sin(t * 0.0007 - i * 2.3 + this.phase * 2));
+        pts.push({ x: c.x + Math.cos(a) * r, y: c.y + Math.sin(a) * r });
+      }
+      return pts;
+    }
+    hit(x, y, w, h) {
+      const c = this.center(w, h);
+      return Math.hypot(x - c.x, y - c.y) < this.baseR * 1.12;
+    }
+  }
+
+  function tracePath(ctx, pts) {
+    const n = pts.length;
+    const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    let m = mid(pts[n - 1], pts[0]);
+    ctx.moveTo(m.x, m.y);
+    for (let i = 0; i < n; i++) {
+      const next = mid(pts[i], pts[(i + 1) % n]);
+      ctx.quadraticCurveTo(pts[i].x, pts[i].y, next.x, next.y);
+    }
+    ctx.closePath();
+  }
+
+  class CellField {
+    constructor(canvas, opts) {
+      this.canvas = canvas;
+      this.ctx = canvas.getContext('2d');
+      this.mode = opts.mode || 'ambient';
+      this.wobble = opts.wobble ?? 0.055;
+      this.drift = opts.drift ?? 0.03;
+      this.onEvent = opts.onEvent || (() => {});
+      this.cells = opts.cells.map(c => new Cell(c));
+      this.particles = [];
+      this.filament = null;
+      this.nextFilament = 2200;
+      this.mouse = { x: 0, y: 0, active: false };
+      this.visible = false;
+      this.last = performance.now();
+      this.dpr = Math.min(devicePixelRatio || 1, 1.75);
+
+      this.resize();
+      addEventListener('resize', () => this.resize());
+
+      canvas.addEventListener('pointermove', e => {
+        const r = canvas.getBoundingClientRect();
+        this.mouse.x = (e.clientX - r.left) * this.dpr;
+        this.mouse.y = (e.clientY - r.top) * this.dpr;
+        this.mouse.active = true;
+        if (this.mode === 'interactive') this.updateCursor();
+      });
+      canvas.addEventListener('pointerleave', () => { this.mouse.active = false; });
+
+      if (this.mode === 'interactive') {
+        canvas.addEventListener('click', e => {
+          const r = canvas.getBoundingClientRect();
+          this.clickAt((e.clientX - r.left) * this.dpr, (e.clientY - r.top) * this.dpr);
         });
+      }
 
-        function animateCursor() {
-            outlineX += (mouseX - outlineX) * 0.15;
-            outlineY += (mouseY - outlineY) * 0.15;
-            cursorOutline.style.left = `${outlineX}px`;
-            cursorOutline.style.top = `${outlineY}px`;
-            requestAnimationFrame(animateCursor);
+      new IntersectionObserver(es => {
+        this.visible = es.some(x => x.isIntersecting);
+        if (this.visible && !REDUCED) this.loop();
+        if (REDUCED) this.draw(performance.now());
+      }, { threshold: 0.05 }).observe(canvas);
+    }
+
+    resize() {
+      const r = this.canvas.getBoundingClientRect();
+      this.canvas.width = Math.round(r.width * this.dpr);
+      this.canvas.height = Math.round(r.height * this.dpr);
+      if (REDUCED) this.draw(performance.now());
+    }
+    get w() { return this.canvas.width; }
+    get h() { return this.canvas.height; }
+
+    updateCursor() {
+      const over = this.cells.some(c => c.alive && c.role !== 'kernel'
+        && c.hit(this.mouse.x, this.mouse.y, this.w, this.h));
+      this.canvas.style.cursor = over ? 'pointer' : 'default';
+    }
+
+    clickAt(x, y) {
+      for (const c of this.cells) {
+        if (!c.hit(x, y, this.w, this.h)) continue;
+        if (c.role === 'kernel') { this.onEvent('kernel-denied'); return; }
+        if (!c.alive) return;
+        this.crash(c);
+        return;
+      }
+    }
+
+    crash(cell) {
+      cell.alive = false;
+      const c = cell.center(this.w, this.h);
+      for (let i = 0; i < 16; i++) {
+        const a = Math.random() * TAU, v = 0.5 + Math.random() * 1.6;
+        this.particles.push({ x: c.x, y: c.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, color: cell.color() });
+      }
+      this.onEvent('crash', cell);
+    }
+
+    revive(cell) {
+      if (cell.alive) return;
+      cell.alive = true;
+      cell.scale = 0.05;
+      this.onEvent('respawn', cell);
+    }
+
+    loop() {
+      if (!this.visible || this._running || REDUCED) return;
+      this._running = true;
+      const step = (t) => {
+        if (!this.visible) { this._running = false; return; }
+        const dt = Math.min(50, t - this.last);
+        this.last = t;
+        this.update(t, dt);
+        this.draw(t);
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+
+    update(t, dt) {
+      const alive = this.cells.filter(c => c.alive);
+      for (const c of this.cells) {
+        if (c.role === 'kernel') continue;
+        c.update(t, dt, this.w, this.h, this.mouse, this.cells, this.drift);
+      }
+      this.particles = this.particles.filter(p => (p.life -= dt * 0.0016) > 0);
+      for (const p of this.particles) { p.x += p.vx * dt * 0.12; p.y += p.vy * dt * 0.12; }
+
+      this.nextFilament -= dt;
+      if (this.filament) {
+        this.filament.p += dt * 0.0009;
+        if (this.filament.p >= 1.15) this.filament = null;
+      } else if (this.nextFilament <= 0 && alive.length >= 2) {
+        const pool = alive.filter(c => c.role !== 'kernel');
+        if (pool.length >= 2) {
+          let a = pool[Math.floor(Math.random() * pool.length)], b = a;
+          while (b === a) b = pool[Math.floor(Math.random() * pool.length)];
+          this.filament = { a, b, p: 0 };
         }
-        animateCursor();
+        this.nextFilament = 2600 + Math.random() * 2600;
+      }
+    }
 
-        // --- COPY & TOGGLE PGP ---
-        function copyPgp() {
-            const pgpText = document.getElementById('pgp-content').innerText;
-            navigator.clipboard.writeText(pgpText).then(() => {
-                const btn = document.querySelector('.copy-btn[onclick="copyPgp()"]');
-                const originalText = btn.innerText;
-                btn.innerText = "[ COPIED ]";
-                btn.style.color = "#00ff00";
-                btn.style.borderColor = "#00ff00";
-                setTimeout(() => {
-                    btn.innerText = originalText;
-                    btn.style.color = "";
-                    btn.style.borderColor = "";
-                }, 2000);
-            });
+    draw(t) {
+      const { ctx, w, h } = this;
+      const P = pal();
+      ctx.clearRect(0, 0, w, h);
+      const fontPx = Math.round(11 * this.dpr);
+
+      if (this.filament) {
+        const A = this.filament.a.center(w, h), B = this.filament.b.center(w, h);
+        const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2 - 40 * this.dpr;
+        ctx.beginPath();
+        ctx.moveTo(A.x, A.y);
+        ctx.quadraticCurveTo(mx, my, B.x, B.y);
+        ctx.strokeStyle = `rgba(${P.filament},0.18)`;
+        ctx.lineWidth = this.dpr;
+        ctx.stroke();
+        const p = Math.min(1, this.filament.p);
+        const ix = (1 - p) * (1 - p) * A.x + 2 * (1 - p) * p * mx + p * p * B.x;
+        const iy = (1 - p) * (1 - p) * A.y + 2 * (1 - p) * p * my + p * p * B.y;
+        ctx.beginPath();
+        ctx.arc(ix, iy, 2.4 * this.dpr, 0, TAU);
+        ctx.fillStyle = `rgba(${P.filament},0.9)`;
+        ctx.fill();
+      }
+
+      for (const cell of this.cells) {
+        if (cell.role === 'kernel') { this.drawKernel(cell, t); continue; }
+        const c = cell.center(w, h);
+        if (!cell.alive) {
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, cell.baseR * 0.6, 0, TAU);
+          ctx.strokeStyle = P.dead;
+          ctx.setLineDash([4 * this.dpr, 6 * this.dpr]);
+          ctx.lineWidth = this.dpr;
+          ctx.stroke();
+          ctx.setLineDash([]);
+          if (cell.label && this.mode === 'interactive') {
+            ctx.font = `${fontPx}px "IBM Plex Mono", monospace`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = P.deadLabel;
+            ctx.fillText(cell.label + (cell.role === 'healer' ? ' · DOWN' : ' · dead'), c.x, c.y + cell.baseR + 22 * this.dpr);
+          }
+          continue;
         }
 
-        function togglePgp() {
-            const container = document.getElementById('pgp-content');
-            const btn = document.getElementById('toggle-btn');
-            container.classList.toggle('collapsed');
-            container.classList.toggle('expanded');
-            btn.innerText = container.classList.contains('collapsed') ? "[ EXPAND ]" : "[ COLLAPSE ]";
+        const pts = cell.membrane(t, w, h, this.wobble);
+        const grow = cell.scale < 1 ? cell.scale : 1;
+        const R = cell.baseR * grow;
+        const col = cell.color();
+
+        const g = ctx.createRadialGradient(c.x, c.y, R * 0.15, c.x, c.y, R * 1.15);
+        g.addColorStop(0, col + '2b');
+        g.addColorStop(0.75, col + '16');
+        g.addColorStop(1, col + '00');
+        ctx.beginPath();
+        tracePath(ctx, pts);
+        ctx.fillStyle = g;
+        ctx.fill();
+
+        ctx.strokeStyle = col + (this.mode === 'interactive' ? '90' : '5e');
+        ctx.lineWidth = 1.2 * this.dpr;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(
+          c.x + Math.sin(t * 0.0005 + cell.phase) * R * 0.12,
+          c.y + Math.cos(t * 0.0004 + cell.phase) * R * 0.12,
+          Math.max(2, R * 0.1), 0, TAU);
+        ctx.fillStyle = col + 'b3';
+        ctx.fill();
+
+        if (cell.label && this.mode === 'interactive') {
+          ctx.font = `${fontPx}px "IBM Plex Mono", monospace`;
+          ctx.textAlign = 'center';
+          ctx.fillStyle = P.label;
+          ctx.fillText(cell.label + (cell.role === 'healer' ? ' ♥' : ''), c.x, c.y + cell.baseR + 22 * this.dpr);
+        }
+      }
+
+      for (const p of this.particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2 * this.dpr * p.life, 0, TAU);
+        ctx.fillStyle = p.color + Math.floor(p.life * 200).toString(16).padStart(2, '0');
+        ctx.fill();
+      }
+    }
+
+    drawKernel(cell, t) {
+      const { ctx, w, h } = this;
+      const P = pal();
+      const c = cell.center(w, h);
+      const R = cell.baseR;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, R, 0, TAU);
+      ctx.strokeStyle = `rgba(${P.kernel},0.55)`;
+      ctx.lineWidth = 1.4 * this.dpr;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, R * 0.55, 0, TAU);
+      ctx.fillStyle = `rgba(${P.kernel},0.12)`;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, R + 7 * this.dpr + Math.sin(t * 0.001) * 1.5 * this.dpr, 0, TAU);
+      ctx.strokeStyle = `rgba(${P.kernel},0.14)`;
+      ctx.lineWidth = this.dpr;
+      ctx.stroke();
+      if (this.mode === 'interactive') {
+        ctx.font = `${Math.round(11 * this.dpr)}px "IBM Plex Mono", monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = P.label;
+        ctx.fillText('kernel · ring 0', c.x, c.y + R + 24 * this.dpr);
+      }
+    }
+  }
+
+  window.ArkaneCells = { CellField, pal };
+})();
+</script>
+
+<script>
+/* ============ Arkane Organism — app ============ */
+(function () {
+  'use strict';
+
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = s => document.querySelector(s);
+  const sleep = ms => REDUCED ? Promise.resolve() : new Promise(r => setTimeout(r, ms));
+
+  /* ---------- WAL: page state, survives the plug ---------- */
+  const WAL_KEY = 'arkane_wal';
+  function walRead() {
+    try { return JSON.parse(localStorage.getItem(WAL_KEY)) || {}; } catch { return {}; }
+  }
+  function walWrite(patch) {
+    const s = Object.assign(walRead(), patch);
+    try { localStorage.setItem(WAL_KEY, JSON.stringify(s)); } catch (e) {}
+    return s;
+  }
+  function stateHash() {
+    const str = JSON.stringify(walRead());
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return (h >>> 0).toString(16).padStart(8, '0');
+  }
+
+  let respawns = walRead().respawns || 0;
+  const plugged = sessionStorage.getItem('arkane_plug') === '1';
+  sessionStorage.removeItem('arkane_plug');
+
+  /* ---------- theme toggle ---------- */
+  const themeBtn = $('#theme-btn');
+  function renderThemeBtn() {
+    themeBtn.textContent = document.documentElement.dataset.theme === 'dark' ? '◐ dark' : '◑ light';
+  }
+  renderThemeBtn();
+  themeBtn.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('arkane_theme', next); } catch (e) {}
+    renderThemeBtn();
+    hud.sys('SYS_CAP_DERIVE');
+  });
+
+  /* ---------- HUD ---------- */
+  const hud = (() => {
+    const up = $('#hud-up'), cellsEl = $('#hud-cells'), sysEl = $('#hud-sys');
+    const t0 = performance.now();
+    setInterval(() => {
+      const s = Math.floor((performance.now() - t0) / 1000);
+      up.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+    }, 1000);
+    let flashTimer = null;
+    return {
+      sys(name) {
+        sysEl.textContent = name;
+        sysEl.classList.add('flash');
+        clearTimeout(flashTimer);
+        flashTimer = setTimeout(() => sysEl.classList.remove('flash'), 350);
+      },
+      cells(alive, total) { cellsEl.textContent = alive + '/' + total; },
+    };
+  })();
+
+  let lastScrollSys = 0;
+  addEventListener('scroll', () => {
+    const now = performance.now();
+    if (now - lastScrollSys > 600) { lastScrollSys = now; hud.sys('SYS_WAIT'); }
+  }, { passive: true });
+  addEventListener('click', e => {
+    if (e.target.closest('#play-canvas, #plug, #boot, #theme-btn')) return;
+    hud.sys('SYS_IPC_CALL');
+  });
+
+  /* ---------- boot sequence ---------- */
+  const BOOT_LINES = [
+    'arkane-kernel v0.17 · x86_64 · <span class="hl">exokernel</span>',
+    '[0.000] trust: whitelist verified · root ed25519 <span class="ok">✓</span>',
+    plugged ? '[0.002] <span class="warn">wal: unclean shutdown detected · replaying …</span>' : null,
+    plugged ? '[0.006] wal: state restored · #' + stateHash() + ' <span class="ok">✓</span>' : null,
+    '[0.011] blob: boot_reconstruct · roots warmed',
+    '[0.013] spawn cell 10 <span class="hl">gw-admin</span>    sig <span class="ok">✓</span>',
+    '[0.015] spawn cell 11 <span class="hl">storage</span>     sig <span class="ok">✓</span>',
+    '[0.018] spawn cell 15 <span class="hl">gw-public</span>   sig <span class="ok">✓</span>',
+    '[0.020] spawn cell 16 <span class="hl">gw-mcp</span>      sig <span class="ok">✓</span>',
+    '[0.024] spawn cell 17 <span class="hl">inference</span>   sig <span class="ok">✓</span> · model mapped ro',
+    '[0.026] sched: cooperative · idle hlt',
+    'arkane: cluster ready · <span class="ok">0 drift</span>',
+  ].filter(Boolean);
+
+  async function boot() {
+    const overlay = $('#boot'), log = $('#boot-log');
+    if (REDUCED) { finishBoot(); return; }
+    let skipped = false;
+    overlay.addEventListener('click', () => { skipped = true; }, { once: true });
+    for (const line of BOOT_LINES) {
+      if (skipped) break;
+      log.innerHTML += line + '\n';
+      await sleep(plugged && line.includes('wal:') ? 330 : 130);
+    }
+    if (!skipped) await sleep(420);
+    finishBoot();
+  }
+  function finishBoot() {
+    $('#boot').classList.add('off');
+    document.documentElement.classList.add('booted');
+    if (plugged) afterReboot();
+  }
+
+  /* ---------- spawn strips ---------- */
+  const SIG = () => Math.random().toString(16).slice(2, 10);
+  const stripIO = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      stripIO.unobserve(e.target);
+      e.target.closest('.chapter').classList.add('on');
+      hud.sys('SYS_CELL_SPAWN');
+      typeStrip(e.target, `▸ spawn cell ${e.target.dataset.cell} · sig <span class="ok">✓</span> ed25519 · blake3:${SIG()}…`);
+    }
+  }, { threshold: 0.25, rootMargin: '0px 0px -60px 0px' });
+  document.querySelectorAll('.spawn-strip').forEach(s => stripIO.observe(s));
+
+  async function typeStrip(el, html) {
+    if (REDUCED) { el.innerHTML = html; return; }
+    const plain = html.replace(/<[^>]+>/g, '');
+    for (let i = 1; i <= plain.length; i += 3) {
+      el.textContent = plain.slice(0, i);
+      await sleep(14);
+    }
+    el.innerHTML = html;
+  }
+
+  /* ---------- hero field ---------- */
+  new ArkaneCells.CellField($('#hero-canvas'), {
+    mode: 'ambient',
+    wobble: 0.05,
+    drift: 0.022,
+    cells: [
+      { x: 0.16, y: 0.30, r: 90,  color: 'sage'  },
+      { x: 0.84, y: 0.26, r: 70,  color: 'ice'   },
+      { x: 0.10, y: 0.74, r: 60,  color: 'coral' },
+      { x: 0.88, y: 0.70, r: 100, color: 'sage'  },
+      { x: 0.50, y: 0.88, r: 55,  color: 'sand'  },
+      { x: 0.62, y: 0.12, r: 48,  color: 'coral' },
+    ],
+  });
+
+  /* ---------- playground with honest healer mechanics ---------- */
+  const PLAY_TOTAL = 6;
+  let alive = PLAY_TOTAL;
+  let healerDown = false;
+  const pendingDrift = [];
+  const statRespawns = $('#stat-respawns');
+  const statHealer = $('#stat-healer');
+  const statDrift = $('#stat-drift');
+  statRespawns.textContent = respawns;
+
+  function setHealer(down) {
+    healerDown = down;
+    statHealer.textContent = down ? 'DOWN' : 'online';
+    statHealer.className = down ? 'bad' : 'ok';
+  }
+  function setDrift() { statDrift.textContent = pendingDrift.length; }
+  function countRespawn() {
+    respawns++;
+    statRespawns.textContent = respawns;
+    walWrite({ respawns });
+  }
+
+  const playField = new ArkaneCells.CellField($('#play-canvas'), {
+    mode: 'interactive',
+    wobble: 0.06,
+    drift: 0.012,
+    cells: [
+      { x: 0.50, y: 0.46, r: 30, color: 'sage',  label: 'kernel',    role: 'kernel' },
+      { x: 0.18, y: 0.30, r: 62, color: 'sage',  label: 'gw-admin',  role: 'healer' },
+      { x: 0.38, y: 0.76, r: 56, color: 'ice',   label: 'gw-public' },
+      { x: 0.64, y: 0.22, r: 54, color: 'ice',   label: 'gw-mcp' },
+      { x: 0.84, y: 0.52, r: 66, color: 'coral', label: 'inference' },
+      { x: 0.15, y: 0.70, r: 50, color: 'sand',  label: 'storage' },
+      { x: 0.66, y: 0.78, r: 44, color: 'sage',  label: 'tool-echo' },
+    ],
+    onEvent(type, cell) {
+      if (type === 'crash') {
+        alive--;
+        hud.cells(alive, PLAY_TOTAL);
+        if (cell.role === 'healer') {
+          // the healer itself is gone — nothing heals until the kernel
+          // restores it from the signed boot chain
+          setHealer(true);
+          hud.sys('SYS_CELL_STOP');
+          setTimeout(() => hud.sys('HEALER_DOWN'), 600);
+          setTimeout(() => {
+            hud.sys('BOOT_CHAIN_RESTORE');
+            playField.revive(cell);
+          }, 3600);
+        } else {
+          hud.sys('SYS_CELL_STOP');
+          if (healerDown) {
+            pendingDrift.push(cell);
+            setDrift();
+            setTimeout(() => hud.sys('DRIFT_UNHEALED'), 600);
+          } else {
+            setTimeout(() => hud.sys('HEALER_DRIFT_DEAD'), 700);
+            setTimeout(() => playField.revive(cell), 1700 + Math.random() * 500);
+          }
+        }
+      } else if (type === 'respawn') {
+        alive++;
+        hud.cells(alive, PLAY_TOTAL);
+        countRespawn();
+        hud.sys('SYS_CELL_SPAWN');
+        if (cell.role === 'healer') {
+          setHealer(false);
+          // back online: heal all pending drift, one by one
+          pendingDrift.splice(0).forEach((dead, i) => {
+            setTimeout(() => {
+              hud.sys('HEALER_DRIFT_DEAD');
+              playField.revive(dead);
+              setDrift();
+            }, 600 + i * 420);
+          });
+          setDrift();
+        }
+      } else if (type === 'kernel-denied') {
+        hud.sys('SYS_ERR_DENIED');
+      }
+    },
+  });
+
+  /* ---------- terminal: the audited path, and the path that doesn't exist ---------- */
+  const TERM_SCRIPT = [
+    { t: 'cmd', s: `curl arkane:8081/v1/chat/completions \\\n    -d '{"messages":[{"role":"user","content":"Who are you?"}]}'` },
+    { t: 'pause', ms: 350 },
+    { t: 'out', s: '<span class="dim">gw-public   the only cell holding a NIC · request audited · #4f2a91c3</span>' },
+    { t: 'out', s: '<span class="route">gw-public → SYS_IPC_CALL → inference</span>' },
+    { t: 'out', s: '<span class="dim">inference   computes · greedy · token-identical to reference</span>' },
+    { t: 'out', s: '<span class="route">inference → SYS_IPC_REPLY → gw-public</span><span class="dim">   ← its only exit</span>' },
+    { t: 'out', s: '<span class="deny">inference → internet                     ✗ path does not exist</span>' },
+    { t: 'pause', ms: 500 },
+    { t: 'ans', s: '“I am a language model inside a cell of hardware.\n I cannot reach the network — I can only answer\n whoever called me. What you are reading left\n through the audited gateway.”' },
+  ];
+
+  let termStarted = false;
+  new IntersectionObserver((es, io) => {
+    if (!es.some(e => e.isIntersecting) || termStarted) return;
+    termStarted = true; io.disconnect();
+    runTerm();
+  }, { threshold: 0.4 }).observe($('#term-body'));
+
+  async function runTerm() {
+    const body = $('#term-body');
+    for (const step of TERM_SCRIPT) {
+      if (step.t === 'pause') { await sleep(step.ms); continue; }
+      if (step.t === 'cmd') {
+        const line = document.createElement('div');
+        line.innerHTML = '<span class="p">$</span> ';
+        const span = document.createElement('span');
+        const cur = document.createElement('span');
+        cur.className = 'tcursor';
+        line.append(span, cur);
+        body.appendChild(line);
+        if (REDUCED) span.textContent = step.s;
+        else for (const ch of step.s) { span.textContent += ch; await sleep(ch === '\n' ? 50 : 13 + Math.random() * 20); }
+        await sleep(250);
+        cur.remove();
+        hud.sys('SYS_IPC_CALL');
+      } else if (step.t === 'ans') {
+        const div = document.createElement('div');
+        div.className = 'ans';
+        body.appendChild(div);
+        if (REDUCED) div.textContent = step.s;
+        else for (const ch of step.s) { div.textContent += ch; await sleep(22); }
+      } else {
+        const div = document.createElement('div');
+        div.innerHTML = step.s;
+        div.style.opacity = '0';
+        div.style.transition = 'opacity .4s';
+        body.appendChild(div);
+        requestAnimationFrame(() => div.style.opacity = '1');
+        await sleep(380);
+      }
+    }
+  }
+
+  /* ---------- pull the plug ---------- */
+  $('#plug').addEventListener('click', async () => {
+    hud.sys('SYS_CELL_STOP');
+    walWrite({
+      respawns,
+      plugs: (walRead().plugs || 0) + 1,
+      scrollY: Math.round(scrollY),
+    });
+    sessionStorage.setItem('arkane_plug', '1');
+    $('#powerdown').classList.add('on');
+    await new Promise(r => setTimeout(r, REDUCED ? 80 : 800));
+    location.reload();
+  });
+
+  function afterReboot() {
+    const s = walRead();
+    if (s.scrollY) requestAnimationFrame(() => scrollTo(0, s.scrollY));
+    const banner = $('#restored');
+    banner.hidden = false;
+    banner.className = 'mono';
+    banner.textContent = `state restored · #${stateHash()} · respawns ${s.respawns || 0} · power cuts ${s.plugs || 0}×`;
+    hud.sys('WAL_REPLAY_OK');
+  }
+
+  /* ---------- plankton: fine drifting life across the whole page ---------- */
+  (function plankton() {
+    const canvas = $('#plankton');
+    const ctx = canvas.getContext('2d');
+    const dpr = Math.min(devicePixelRatio || 1, 1.5);
+    let W, H;
+    function size() {
+      W = canvas.width = Math.round(innerWidth * dpr);
+      H = canvas.height = Math.round(innerHeight * dpr);
+    }
+    size();
+    addEventListener('resize', size);
+
+    const N = innerWidth < 700 ? 50 : 110;
+    const dots = Array.from({ length: N }, () => ({
+      x: Math.random(),                  // 0..1 of width
+      y: Math.random() * 3,              // 0..3 viewport-heights of virtual space
+      depth: 0.25 + Math.random() * 0.75,
+      r: 0.6 + Math.random() * 1.6,
+      seed: Math.random() * 1000,
+      vx: 0, vy: 0,
+    }));
+    const ripples = [];
+    const mouse = { x: -1e4, y: -1e4 };
+
+    addEventListener('pointermove', e => { mouse.x = e.clientX * dpr; mouse.y = e.clientY * dpr; }, { passive: true });
+    addEventListener('click', e => {
+      if (e.target.closest('#boot, #plug')) return;
+      ripples.push({ x: e.clientX * dpr, y: e.clientY * dpr, r: 0, life: 1 });
+    });
+
+    if (REDUCED) { drawStatic(); return; }
+    function drawStatic() {
+      const P = ArkaneCells.pal();
+      ctx.clearRect(0, 0, W, H);
+      for (const d of dots) {
+        ctx.beginPath();
+        ctx.arc(d.x * W, (d.y % 1) * H, d.r * dpr, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${P.plankton},${0.10 + d.depth * 0.12})`;
+        ctx.fill();
+      }
+    }
+
+    let last = performance.now();
+    let running = true;
+    document.addEventListener('visibilitychange', () => {
+      running = !document.hidden;
+      if (running) { last = performance.now(); requestAnimationFrame(tick); }
+    });
+
+    function tick(t) {
+      if (!running) return;
+      const dt = Math.min(50, t - last);
+      last = t;
+      const P = ArkaneCells.pal();
+      ctx.clearRect(0, 0, W, H);
+
+      const scroll = scrollY * dpr;
+      for (const d of dots) {
+        // autonomous drift
+        d.x += Math.sin(t * 0.00008 + d.seed) * 0.00002 * dt + d.vx * dt * 0.001;
+        d.y += (0.0000022 + Math.cos(t * 0.00006 + d.seed * 2) * 0.0000012) * dt * d.depth + d.vy * dt * 0.001;
+        d.vx *= 0.96; d.vy *= 0.96;
+        if (d.x > 1.02) d.x -= 1.04; if (d.x < -0.02) d.x += 1.04;
+
+        // screen position with depth parallax against scroll
+        const span = H * 3;
+        let sy = ((d.y * H - scroll * d.depth * 0.35) % span + span) % span - H * 0.5;
+        const sx = d.x * W;
+        if (sy < -20 || sy > H + 20) continue;
+
+        // gentle swirl around the mouse
+        const mdx = sx - mouse.x, mdy = sy - mouse.y;
+        const md = Math.hypot(mdx, mdy);
+        const reach = 170 * dpr;
+        if (md < reach && md > 1) {
+          const f = (1 - md / reach) * 0.012;
+          d.vx += (-mdy / md) * f * d.depth;       // tangential = swirl
+          d.vy += (mdx / md) * f * d.depth;
+          d.vx += (mdx / md) * f * 0.45;           // slight repel
+          d.vy += (mdy / md) * f * 0.45;
         }
 
-        // --- ADVANCED PARTICLE PHYSICS (DEEP SPACE SLOW MOTION) ---
-        const canvas = document.getElementById('neural-bg');
-        const ctx = canvas.getContext('2d');
-        let particlesArray;
-        let gravityPoints = [];
+        ctx.beginPath();
+        ctx.arc(sx, sy, d.r * dpr * (0.7 + d.depth * 0.5), 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${P.plankton},${0.07 + d.depth * 0.13})`;
+        ctx.fill();
+      }
 
-        let mouse = { x: -1000, y: -1000, radius: 100 };
+      // click ripples: a soft membrane wave
+      for (let i = ripples.length - 1; i >= 0; i--) {
+        const r = ripples[i];
+        r.r += dt * 0.22 * dpr;
+        r.life -= dt * 0.0011;
+        if (r.life <= 0) { ripples.splice(i, 1); continue; }
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${P.plankton},${r.life * 0.22})`;
+        ctx.lineWidth = dpr;
+        ctx.stroke();
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  })();
 
-        window.addEventListener('mousemove', (event) => {
-            mouse.x = event.x;
-            mouse.y = event.y;
+  /* ---------- cursor ring ---------- */
+  (function cursorRing() {
+    if (REDUCED || matchMedia('(pointer: coarse)').matches) return;
+    const ring = $('#cursor');
+    let tx = -100, ty = -100, x = -100, y = -100, seen = false;
+    addEventListener('pointermove', e => {
+      tx = e.clientX; ty = e.clientY;
+      if (!seen) { seen = true; x = tx; y = ty; ring.style.opacity = '0.55'; }
+      const hot = e.target.closest('a, button, #play-canvas');
+      ring.classList.toggle('hot', !!hot);
+    }, { passive: true });
+    (function follow() {
+      x += (tx - x) * 0.13;
+      y += (ty - y) * 0.13;
+      ring.style.transform = `translate(${x}px, ${y}px)`;
+      requestAnimationFrame(follow);
+    })();
+  })();
+
+  /* ---------- smooth scroll + parallax (CDN-dependent, graceful) ---------- */
+  function initMotionLibs() {
+    if (REDUCED) return;
+    if (window.Lenis) {
+      const lenis = new Lenis({ lerp: 0.1 });
+      (function raf(t) { lenis.raf(t); requestAnimationFrame(raf); })();
+    }
+    if (window.gsap && window.ScrollTrigger) {
+      gsap.registerPlugin(ScrollTrigger);
+      gsap.to('.hero-inner', {
+        y: -70, opacity: 0.25, ease: 'none',
+        scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true },
+      });
+      gsap.to('#hero-canvas', {
+        y: 110, ease: 'none',
+        scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true },
+      });
+      document.querySelectorAll('.chapter h2').forEach(el => {
+        gsap.from(el, {
+          y: 26, opacity: 0, duration: 1, ease: 'power3.out',
+          scrollTrigger: { trigger: el, start: 'top 82%' },
         });
-
-        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-        window.addEventListener('resize', () => { resizeCanvas(); initParticles(); });
-        resizeCanvas();
-
-        class GravityPoint {
-            constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                // SLOW MOTION: Reduziert auf 30%
-                this.vx = (Math.random() - 0.5) * 0.06;
-                this.vy = (Math.random() - 0.5) * 0.06;
-                this.radius = Math.random() * 100 + 100;
-            }
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
-                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
-                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
-            }
-        }
-
-        class Particle {
-            constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                // SLOW MOTION: Startgeschwindigkeit reduziert
-                this.vx = (Math.random() * 0.06) - 0.03;
-                this.vy = (Math.random() * 0.06) - 0.03;
-                this.size = Math.random() * 2;
-                this.color = '#ff0000';
-                this.isConnected = false;
-            }
-            update() {
-                // HARD SPEED LIMITS (Reduziert für Zeitlupe)
-                const maxConnectedSpeed = 0.1; // "Parken" (sehr langsam)
-                const maxSearchSpeed = 0.4;    // "Suchen" (langsam, aber schneller als Parken)
-
-                if (!this.isConnected) {
-                    // Einsam: Sehr sanft beschleunigen
-                    this.vx += (Math.random() - 0.5) * 0.01;
-                    this.vy += (Math.random() - 0.5) * 0.01;
-
-                    // Cap Speed
-                    let speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
-                    if (speed > maxSearchSpeed) {
-                        this.vx = (this.vx / speed) * maxSearchSpeed;
-                        this.vy = (this.vy / speed) * maxSearchSpeed;
-                    }
-                } else {
-                    // Verbunden: Abbremsen
-                    this.vx *= 0.98;
-                    this.vy *= 0.98;
-
-                    // Cap Speed
-                    let speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
-                    if (speed > maxConnectedSpeed) {
-                        this.vx = (this.vx / speed) * maxConnectedSpeed;
-                        this.vy = (this.vy / speed) * maxConnectedSpeed;
-                    }
-                }
-
-                // 1. Schwerkraft der Blobs (Minimalisiert)
-                let affectedByGravity = false;
-                for (let gp of gravityPoints) {
-                    let dx = gp.x - this.x;
-                    let dy = gp.y - this.y;
-                    let dist = Math.sqrt(dx*dx + dy*dy);
-                    if (dist < gp.radius) {
-                        this.vx += dx * 0.00003; // Extrem schwache Anziehung
-                        this.vy += dy * 0.00003;
-                        affectedByGravity = true;
-                    }
-                }
-
-                // 2. Maus-Interaktion: SOFT REPEL (0.15 Kraft)
-                let dxM = mouse.x - this.x;
-                let dyM = mouse.y - this.y;
-                let distM = Math.sqrt(dxM*dxM + dyM*dyM);
-
-                if (distM < mouse.radius) {
-                    let forceDirectionX = dxM / distM;
-                    let forceDirectionY = dyM / distM;
-                    let force = (mouse.radius - distM) / mouse.radius;
-                    let directionX = forceDirectionX * force * 0.15;
-                    let directionY = forceDirectionY * force * 0.15;
-
-                    this.vx -= directionX;
-                    this.vy -= directionY;
-                }
-
-                // Drift (damit sie niemals ganz stillstehen)
-                if (Math.abs(this.vx) < 0.05) this.vx += (Math.random() - 0.5) * 0.002;
-                if (Math.abs(this.vy) < 0.05) this.vy += (Math.random() - 0.5) * 0.002;
-
-                this.x += this.vx;
-                this.y += this.vy;
-
-                if (this.x < 0) this.x = canvas.width;
-                if (this.x > canvas.width) this.x = 0;
-                if (this.y < 0) this.y = canvas.height;
-                if (this.y > canvas.height) this.y = 0;
-            }
-            draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill(); }
-        }
-
-        function initParticles() {
-            particlesArray = [];
-            gravityPoints = [];
-
-            for (let i = 0; i < 4; i++) {
-                gravityPoints.push(new GravityPoint());
-            }
-
-            let numberOfParticles = (canvas.height * canvas.width) / 10000;
-            for (let i = 0; i < numberOfParticles; i++) { particlesArray.push(new Particle()); }
-        }
-
-        let fpsFrames = 0;
-        let fpsLast = performance.now();
-        let currentFps = 60;
-
-        function animateParticles() {
-            requestAnimationFrame(animateParticles);
-
-            fpsFrames++;
-            const _fpsNow = performance.now();
-            if (_fpsNow - fpsLast >= 1000) {
-                currentFps = fpsFrames;
-                fpsFrames = 0;
-                fpsLast = _fpsNow;
-            }
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            gravityPoints.forEach(gp => gp.update());
-            particlesArray.forEach(p => p.isConnected = false);
-
-            for (let i = 0; i < particlesArray.length; i++) {
-                particlesArray[i].update();
-                particlesArray[i].draw();
-
-                for (let j = i; j < particlesArray.length; j++) {
-                    const dx = particlesArray[i].x - particlesArray[j].x;
-                    const dy = particlesArray[i].y - particlesArray[j].y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance < 120) {
-                        ctx.beginPath();
-                        ctx.strokeStyle = `rgba(255, 0, 0, ${0.2 - distance/600})`;
-                        ctx.lineWidth = 0.5;
-                        ctx.moveTo(particlesArray[i].x, particlesArray[i].y);
-                        ctx.lineTo(particlesArray[j].x, particlesArray[j].y);
-                        ctx.stroke();
-                        particlesArray[i].isConnected = true;
-                        particlesArray[j].isConnected = true;
-                    }
-                }
-
-                let dx = mouse.x - particlesArray[i].x;
-                let dy = mouse.y - particlesArray[i].y;
-                let distance = Math.sqrt(dx*dx + dy*dy);
-                if (distance < mouse.radius) {
-                    ctx.beginPath();
-                    ctx.strokeStyle = `rgba(255, 0, 0, ${0.3 - distance/mouse.radius * 0.3})`;
-                    ctx.lineWidth = 0.8;
-                    ctx.moveTo(particlesArray[i].x, particlesArray[i].y);
-                    ctx.lineTo(mouse.x, mouse.y);
-                    ctx.stroke();
-                }
-            }
-        }
-        initParticles();
-        animateParticles();
-
-        // --- LIVE TELEMETRY (timestamp + uptime + fps) ---
-        function updateTelemetry() {
-            const now = new Date();
-            const timeString = `[${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}]`;
-            const tEl = document.getElementById('current-time');
-            if (tEl) tEl.innerText = timeString;
-
-            const upEl = document.getElementById('telemetry-uptime');
-            if (upEl) {
-                const s = Math.floor((Date.now() - pageLoad) / 1000);
-                const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
-                upEl.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
-            }
-
-            const fpsEl = document.getElementById('telemetry-fps');
-            if (fpsEl) fpsEl.textContent = currentFps;
-        }
-        setInterval(updateTelemetry, 1000);
-
-        // --- ARKCTL EASTER EGG TERMINAL ---
-        const pageLoad = Date.now();
-        const arkctlOverlay = document.getElementById('arkctl-overlay');
-        const arkctlInput   = document.getElementById('arkctl-input');
-        const arkctlOutput  = document.getElementById('arkctl-output');
-        let triggerBuffer = '';
-        let konami = [];
-        const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
-        const history = []; let histIdx = -1;
-
-        function fmtUptime() {
-            const s = Math.floor((Date.now() - pageLoad) / 1000);
-            const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
-            return `${h}h ${String(m).padStart(2,'0')}m ${String(r).padStart(2,'0')}s`;
-        }
-
-        function arkctlPrint(lines, cls = 'line-out') {
-            const arr = Array.isArray(lines) ? lines : [lines];
-            for (const l of arr) {
-                const div = document.createElement('div');
-                div.className = cls;
-                div.textContent = l;
-                arkctlOutput.appendChild(div);
-            }
-            arkctlOutput.scrollTop = arkctlOutput.scrollHeight;
-        }
-
-        function arkctlEcho(cmd) {
-            const div = document.createElement('div');
-            div.className = 'line-cmd';
-            div.textContent = `arkctl> ${cmd}`;
-            arkctlOutput.appendChild(div);
-        }
-
-        const COMMANDS = {
-            help: () => arkctlPrint([
-                'available commands:',
-                '  cell list              list active cells',
-                '  cell info <name>       inspect a cell',
-                '  cap show               list issued capabilities',
-                '  phase                  build phase status',
-                '  status                 kernel summary',
-                '  whoami                 identity',
-                '  clear                  clear screen',
-                '  exit                   close terminal',
-            ]),
-            'cell list': () => arkctlPrint([
-                'NAME          STATE       PID    CAPS',
-                'gw-admin      running       1    [net.in, authority, mem]',
-                'cell-net      running       2    [mmio:net, irq, dma, mem]',
-                'cell-storage  running       3    [mmio:blk, irq, dma, mem]',
-                'cell-tls-poc  running       4    [net.out, blob, mem]',
-            ]),
-            'cap show': () => arkctlPrint([
-                'capability_table[64] // 14 active // ed25519',
-                '  0x01  authority               verified',
-                '  0x02  mmio.virtio-net         verified',
-                '  0x03  mmio.virtio-blk         verified',
-                '  0x07  net.inbound:9000        verified',
-                '  0x09  blob.store/retrieve     verified',
-                '  0x0b  irq.msix[1]             verified',
-                '  0x0c  net.target.0.0.0.0/0    revoked',
-                '  ...',
-            ]),
-            phase: () => {
-                arkctlPrint([
-                    'phase-1  exokernel            [DONE]',
-                    'phase-2  security             [DONE]',
-                    'phase-3  cell loading         [DONE]',
-                    'phase-4  network              [DONE]',
-                ], 'line-ok');
-                arkctlPrint(['phase-5  management           [ACTIVE]'], 'line-cmd');
-                arkctlPrint([
-                    '         |- blob store          [done]',
-                    '         |- storage syscalls    [done]',
-                    '         |- write-ahead log     [active]',
-                    '         \\- cluster persistence [queued]',
-                    'phase-6  ai interface         [PLANNED]',
-                    'phase-7  production           [PLANNED]',
-                    '',
-                    '// production-grade lives many phases past 7. we are honest about this.',
-                ]);
-            },
-            status: () => arkctlPrint([
-                'arkane kernel // x86_64 // phase-5',
-                `  uptime         ${fmtUptime()}`,
-                '  cells          4 running',
-                '  caps issued    14',
-                '  faults         1 (recovered)',
-                '  blob store     content-addressed // blake3',
-                '  scheduler      round-robin // 100hz',
-                '  vip            verify-once-then-pass-through',
-            ]),
-            whoami: () => arkctlPrint(['arkane // research collective']),
-        };
-
-        function runCommand(raw) {
-            const cmd = raw.trim();
-            if (!cmd) return;
-            arkctlEcho(cmd);
-            history.push(cmd); histIdx = history.length;
-
-            if (cmd === 'clear' || cmd === 'cls') { arkctlOutput.innerHTML = ''; return; }
-            if (cmd === 'exit' || cmd === 'quit') { closeArkctl(); return; }
-
-            if (COMMANDS[cmd]) { COMMANDS[cmd](); return; }
-
-            if (cmd.startsWith('cell info ')) {
-                const name = cmd.slice(10).trim();
-                const cells = {
-                    'gw-admin':     ['gw-admin', 'pid=1', 'state=running', 'caps=[net.in, authority, mem]', 'role=control-plane gateway'],
-                    'cell-net':     ['cell-net', 'pid=2', 'state=running', 'caps=[mmio:net, irq, dma, mem]', 'driver=virtio-net + smoltcp'],
-                    'cell-storage': ['cell-storage', 'pid=3', 'state=running', 'caps=[mmio:blk, irq, dma, mem]', 'driver=virtio-blk'],
-                    'cell-tls-poc': ['cell-tls-poc', 'pid=4', 'state=running', 'caps=[net.out, blob, mem]', 'stack=rustls (no_std)'],
-                };
-                if (cells[name]) arkctlPrint(cells[name]);
-                else arkctlPrint([`cell '${name}' not found. try: cell list`], 'line-err');
-                return;
-            }
-
-            arkctlPrint([`unknown command: '${cmd}'. type 'help'.`], 'line-err');
-        }
-
-        function openArkctl() {
-            arkctlOverlay.classList.remove('hidden');
-            arkctlOverlay.setAttribute('aria-hidden', 'false');
-            if (arkctlOutput.childElementCount === 0) {
-                arkctlPrint([
-                    'arkane control // local cell // v0.1.0',
-                    'connected via uds // ed25519: bound',
-                    "type 'help' for commands. esc to disconnect.",
-                    '',
-                ]);
-            }
-            setTimeout(() => arkctlInput.focus(), 50);
-        }
-        function closeArkctl() {
-            arkctlOverlay.classList.add('hidden');
-            arkctlOverlay.setAttribute('aria-hidden', 'true');
-            arkctlInput.blur();
-        }
-        window.closeArkctl = closeArkctl;
-
-        document.addEventListener('keydown', (e) => {
-            // Konami sequence
-            konami.push(e.key);
-            if (konami.length > KONAMI.length) konami.shift();
-            if (konami.length === KONAMI.length && konami.every((k, i) => k.toLowerCase() === KONAMI[i].toLowerCase())) {
-                konami = []; openArkctl(); return;
-            }
-
-            // ESC closes
-            if (e.key === 'Escape' && !arkctlOverlay.classList.contains('hidden')) {
-                closeArkctl(); return;
-            }
-
-            // 'arkctl' typed anywhere outside an input
-            if (document.activeElement === arkctlInput) return;
-            if (e.key.length === 1 && /[a-z]/i.test(e.key)) {
-                triggerBuffer = (triggerBuffer + e.key).toLowerCase().slice(-12);
-                if (triggerBuffer.endsWith('arkctl')) {
-                    triggerBuffer = '';
-                    openArkctl();
-                }
-            }
+      });
+      document.querySelectorAll('.playground-frame, .term-frame, .contract').forEach(el => {
+        gsap.fromTo(el, { y: 36 }, {
+          y: -24, ease: 'none',
+          scrollTrigger: { trigger: el, start: 'top bottom', end: 'bottom top', scrub: true },
         });
+      });
+    }
+  }
 
-        arkctlInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                runCommand(arkctlInput.value);
-                arkctlInput.value = '';
-            } else if (e.key === 'ArrowUp') {
-                if (histIdx > 0) { histIdx--; arkctlInput.value = history[histIdx] || ''; }
-                e.preventDefault();
-            } else if (e.key === 'ArrowDown') {
-                if (histIdx < history.length - 1) { histIdx++; arkctlInput.value = history[histIdx] || ''; }
-                else { histIdx = history.length; arkctlInput.value = ''; }
-                e.preventDefault();
-            }
-        });
-
-        arkctlOverlay.addEventListener('click', (e) => {
-            if (e.target === arkctlOverlay) closeArkctl();
-        });
-
-        // --- LIVE BOOT SEQUENCE (FIRST VISIT ONLY · ?boot to replay) ---
-        (function bootSequence() {
-            const force = location.search.includes('boot');
-            if (!force && localStorage.getItem('arkane_first_boot_seen')) return;
-
-            const entries = document.querySelectorAll('.terminal-body .log-entry');
-            if (!entries.length) return;
-
-            entries.forEach(e => e.classList.add('boot-hidden'));
-
-            const reveal = () => {
-                let delay = 600;
-                entries.forEach((entry) => {
-                    if (entry.textContent.includes('FAULT')) delay += 500;
-                    setTimeout(() => entry.classList.remove('boot-hidden'), delay);
-                    delay += 160 + Math.random() * 240;
-                });
-                setTimeout(() => localStorage.setItem('arkane_first_boot_seen', '1'), delay);
-            };
-
-            const observer = new IntersectionObserver((iEntries) => {
-                iEntries.forEach(e => {
-                    if (e.isIntersecting) {
-                        reveal();
-                        observer.disconnect();
-                    }
-                });
-            }, { threshold: 0.4 });
-            observer.observe(entries[0]);
-        })();
-    </script>
+  /* ---------- start ---------- */
+  boot();
+  addEventListener('load', initMotionLibs);
+})();
+</script>
 </body>
 </html>
