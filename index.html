@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Arkane OS — A system of cells</title>
-<meta name="description" content="Arkane OS is a capability exokernel written in Rust. Every workload — including your AI — lives in its own hardware-isolated cell. 24 syscalls. Nothing else.">
+<title>Arkane OS — an operating system built from isolated cells</title>
+<meta name="description" content="Arkane OS is a research operating system written in Rust. A ~10,000-line exokernel with 23 syscalls; everything else — network, storage, AI inference — runs in hardware-isolated cells.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%239db89a' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23e8927c'/%3E%3C/svg%3E">
 <script>
   document.documentElement.classList.add('js');
-  // theme before first paint: stored > system > dark
+  // theme before first paint: stored > system preference > cream (light)
   (function () {
     let t = null;
     try { t = localStorage.getItem('arkane_theme'); } catch (e) {}
-    if (!t) t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     document.documentElement.dataset.theme = t;
   })();
 </script>
@@ -277,6 +277,36 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
 .play-stats b.bad { color: var(--coral); }
 .play-stats .sep { color: var(--hair); }
 
+/* ================= anatomy (clickable architecture) ================= */
+.arch { display: grid; grid-template-columns: 1.15fr .85fr; gap: 26px; margin-top: 48px; align-items: start; }
+@media (max-width: 860px) { .arch { grid-template-columns: 1fr; } }
+.arch-stack { display: flex; flex-direction: column; gap: 10px; }
+.arch-row { display: grid; gap: 10px; }
+.arch-row.g3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 560px) { .arch-row.g3 { grid-template-columns: 1fr; } }
+.arch-label {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .22em;
+  text-transform: uppercase; color: var(--faint); margin-top: 8px;
+}
+.arch-flow { text-align: center; font-family: var(--mono); font-size: 11px; color: var(--faint); padding: 2px 0; }
+.node {
+  border: 1px solid var(--hair); border-radius: 12px; background: var(--ink-2);
+  padding: 14px 14px; font-family: var(--mono); font-size: 12.5px; color: var(--bone);
+  cursor: pointer; text-align: left;
+  transition: border-color .25s, transform .25s, background .5s ease;
+}
+.node small { display: block; margin-top: 5px; font-size: 10.5px; color: var(--faint); line-height: 1.5; }
+.node:hover { border-color: var(--muted); transform: translateY(-1px); }
+.node.sel { border-color: var(--sage); }
+.arch-info {
+  border: 1px solid var(--hair); border-radius: 14px; background: var(--ink-2);
+  padding: 22px 24px; position: sticky; top: 20px; transition: background .5s ease;
+}
+.arch-info h3 { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; color: var(--sage); font-weight: 500; margin-bottom: 12px; }
+.arch-info p { font-size: 15px; color: var(--muted); line-height: 1.65; }
+.arch-info p + p { margin-top: 12px; }
+.arch-info .mono { font-size: .82em; color: var(--sage); }
+
 /* ================= contract card ================= */
 .contract {
   margin-top: 46px; border: 1px solid var(--hair); border-radius: 14px;
@@ -394,10 +424,11 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
 <header id="hero">
   <canvas id="hero-canvas" aria-hidden="true"></canvas>
   <div class="hero-inner">
-    <div class="kicker">Arkane OS — capability exokernel</div>
-    <h1>A system of cells.<br><em>Like everything that survives.</em></h1>
-    <p class="hero-sub">Every workload — including your AI — lives in its own
-    hardware-isolated cell. Written in Rust. <b>24&nbsp;syscalls. Nothing else.</b></p>
+    <div class="kicker">Arkane OS — a research operating system in Rust</div>
+    <h1>An operating system<br><em>built from isolated cells.</em></h1>
+    <p class="hero-sub">A ~10,000-line kernel that almost never changes.
+    Everything else — network, storage, the AI model — runs in
+    <b>hardware-isolated cells</b> that update and heal like a server fleet.</p>
   </div>
   <div class="scroll-cue" aria-hidden="true"><span></span></div>
 </header>
@@ -409,12 +440,15 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
     <div class="ch-no">01 · Principle</div>
     <h2>What does not exist cannot be exploited.</h2>
     <p class="prose">Run a language model in a bank or a hospital today and it stands
-    on thirty years of legacy: four hundred syscalls, shells, dynamic linkers.
-    Arkane starts from the other end — from <em>nothing</em> — and only adds
-    what can be proven.</p>
+    on thirty years of legacy: four hundred syscalls, shells, dynamic linkers —
+    and a kernel that needs patching every month. Arkane starts from the other
+    end — from <em>nothing</em> — and only adds what can be proven.
+    Isolation is not a check the kernel performs on every operation: it is wired
+    into the page tables <b>once, at spawn</b>. Drivers, network and storage live
+    in cells — so when they break or need an update, <b>the kernel doesn't</b>.</p>
     <div class="numerals">
-      <div class="nume"><span class="n">24</span><span class="l">syscalls,<br>the entire API</span></div>
-      <div class="nume"><span class="n">12×</span><span class="l">speedup in<br>workload cells</span></div>
+      <div class="nume"><span class="n">23</span><span class="l">syscalls,<br>the entire API</span></div>
+      <div class="nume"><span class="n">~10k</span><span class="l">lines of Rust,<br>the whole kernel</span></div>
       <div class="nume"><span class="n">0</span><span class="l">lines of C.<br>POSIX. shell.</span></div>
     </div>
   </div>
@@ -429,7 +463,7 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
     <p class="prose">This is the real v0.17 cluster — six cells around a kernel, each
     with its own page table. Isolation is enforced by the MMU, not by policy.
     <b>Click a cell and watch what happens.</b> Then try killing
-    <b>gw-admin</b> — the healer itself.</p>
+    <b>gw-admin</b> — the control plane, which is also the <b>ACP&nbsp;healer</b>.</p>
     <div class="playground-frame">
       <canvas id="play-canvas"></canvas>
       <div class="play-stats mono">
@@ -439,21 +473,63 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
         <span class="sep">·</span>
         <span>drift pending <b id="stat-drift">0</b></span>
         <span class="sep">·</span>
-        <span>kernel <b class="ok">unimpressed</b></span>
+        <span>kernel restarts <b class="ok">0</b></span>
       </div>
     </div>
-    <p class="caption">Crash → <span class="mono">HEALER_DRIFT_DEAD</span> → respawn: gw-admin compares
-    desired and observed state and heals the drift. Kill gw-admin and <b>nothing comes back</b> —
-    dead cells pile up as pending drift — until the kernel restores the healer from the signed
-    boot chain, which then heals everything at once. The kernel itself never flinches.</p>
+    <p class="caption">Crash → <span class="mono">HEALER_DRIFT_DEAD</span> → respawn: gw-admin heals
+    the drift within moments. Kill gw-admin and <b>nothing comes back</b> — cells that die in
+    the meantime pile up as pending drift, because the healer itself has no healer. Restoring it
+    takes noticeably longer: the kernel has to rebuild it from the signed boot chain and the
+    healer must reload and verify its state before it may act. Only once gw-admin is back
+    online does it work through the backlog, cell by cell.</p>
   </div>
 </section>
 
-<!-- ============ 03 LAW ============ -->
+<!-- ============ 03 ANATOMY ============ -->
+<section class="chapter" id="anatomy">
+  <div class="spawn-strip" data-cell="anatomy"></div>
+  <div class="ch-inner">
+    <div class="ch-no">03 · Anatomy</div>
+    <h2>What it is made of.</h2>
+    <p class="prose">Every box is a real binary in the repository — no marketing
+    architecture. <b>Click a component.</b></p>
+    <div class="arch">
+      <div class="arch-stack" id="arch-stack">
+        <div class="arch-row" style="grid-template-columns: 1fr 2fr;">
+          <button class="node" data-k="arkctl" type="button">arkctl<small>operator CLI</small></button>
+          <div class="arch-flow" style="align-self:center">mTLS · HTTP/2 · gRPC →</div>
+        </div>
+        <div class="arch-label">gateway cells</div>
+        <div class="arch-row g3">
+          <button class="node" data-k="gwadmin" type="button">gw-admin<small>control plane · ACP healer</small></button>
+          <button class="node" data-k="gwpublic" type="button">gw-public<small>chat API · the only public NIC</small></button>
+          <button class="node" data-k="gwmcp" type="button">gw-mcp<small>MCP tool host</small></button>
+        </div>
+        <div class="arch-flow">↓ capability-mediated IPC ↓</div>
+        <div class="arch-label">workload cells</div>
+        <div class="arch-row g3">
+          <button class="node" data-k="inference" type="button">inference<small>weights mapped read-only</small></button>
+          <button class="node" data-k="storage" type="button">persistence<small>durable state · WAL</small></button>
+          <button class="node" data-k="tools" type="button">tool cells<small>one cell per MCP tool</small></button>
+        </div>
+        <div class="arch-flow">↓ 23 syscalls — every one a capability check ↓</div>
+        <button class="node" data-k="kernel" type="button">exokernel<small>capability check · memory mapping · IRQ routing · IPC — nothing else</small></button>
+        <button class="node" data-k="hw" type="button">hardware<small>virtio-net · virtio-blk · MSI-X · IOMMU (v0.23)</small></button>
+      </div>
+      <div class="arch-info" id="arch-info">
+        <h3>// select a component</h3>
+        <p>Everything shown here runs today in v0.17 — spawned, signed and
+        isolated on the real kernel.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 04 LAW ============ -->
 <section class="chapter" id="law">
   <div class="spawn-strip" data-cell="law"></div>
   <div class="ch-inner narrow">
-    <div class="ch-no">03 · Law</div>
+    <div class="ch-no">04 · Law</div>
     <h2>Two keys, one law.</h2>
     <p class="prose">The developer signs the <b>shape</b> of a cell into its binary.
     The operator provides the <b>values</b> in the manifest. The kernel enforces both —
@@ -470,58 +546,85 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
   </div>
 </section>
 
-<!-- ============ 04 CAGE ============ -->
+<!-- ============ 05 CAGE ============ -->
 <section class="chapter" id="cage">
   <div class="spawn-strip" data-cell="cage"></div>
   <div class="ch-inner">
-    <div class="ch-no">04 · Cage</div>
+    <div class="ch-no">05 · Cage</div>
     <h2>The AI that cannot phone home.</h2>
     <p class="prose">A real language model runs inside the inference cell — its own
-    <code>no_std</code> engine, token-identical to the reference, twelve times faster
-    with the SSE2 workload target. It holds no network capability. The only thing it
-    can do is <b>answer whoever called it</b> — and the only cell holding a network
-    card is the gateway, where every request is audited.</p>
+    <code>no_std</code> engine, token-identical to the reference implementation.
+    The only thing it can do is <b>answer whoever called it</b> — and the only cell
+    holding a network card is the gateway, where every request is audited.</p>
     <div class="term-frame">
       <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span>gw-public :8081 · /v1/chat/completions</div>
       <pre class="mono" id="term-body"></pre>
     </div>
+    <p class="caption">Why can't it phone home? Not because a firewall says no — because
+    <b>the path does not exist</b>. A cell receives exactly what its manifest grants,
+    on top of what its signed contract allows. The inference manifest grants memory and
+    the model weights — and nothing network-shaped. Since no capability for a network
+    card is ever declared, the kernel never wires one up: there is nothing to block,
+    monitor, or misconfigure. This is what the operator's manifest looks like:</p>
+    <div class="contract">
+      <div class="ct-head mono">manifest.yaml · cell: inference</div>
+      <pre><span class="m">arkane:</span> v1
+<span class="m">kind:</span> Cell
+<span class="m">metadata:</span>
+  name: inference
+<span class="m">spec:</span>
+  image: prod.images.inference@blake3:9c41…   <span class="r"># signed — contract forbids net</span>
+  resources: { memory: 512MB, cpu_shares: 1.0 }
+  capabilities:
+    - name: model-weights
+      type: blob
+      spec: { hash: blake3:7c8a…, rights: [read] }
+  <span class="r"># no mmio, no port, no endpoint —
+  # a path to a network card is never created</span></pre>
+    </div>
   </div>
 </section>
 
-<!-- ============ 05 PROOF ============ -->
+<!-- ============ 06 PROOF ============ -->
 <section class="chapter" id="proof">
   <div class="spawn-strip" data-cell="proof"></div>
   <div class="ch-inner narrow center">
-    <div class="ch-no">05 · Proof</div>
+    <div class="ch-no">06 · Proof</div>
     <h2>Pull the plug.</h2>
-    <p class="prose">The cluster stores its state crash-atomically — Blake3-chained,
-    double-buffered, reboot-proven. This page does the same.
-    <b>Cut the power and see what's left.</b></p>
+    <p class="prose">Every apply is written to a <b>Blake3-chained write-ahead log</b>;
+    a persistence cell mirrors the cluster state to its own disk, anchored through a
+    double-buffered root pointer the kernel reads at boot. Kill the power mid-flight
+    and the next boot replays: every cell, every capability, every model mapping
+    comes back — <b>without re-applying anything</b>. This page mirrors that
+    mechanism. Cut the power and see what's left.</p>
     <button id="plug" type="button">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.5a8 8 0 1 0 11.4 0"/></svg>
       <span>Cut the power</span>
     </button>
     <div id="restored" hidden></div>
     <p class="caption">In the real system this test is called <span class="mono">make t4-demo</span>:
-    apply → kernel reboot → the state lives, no re-apply.</p>
+    apply → hard kernel reboot → the cluster is still there. It has been part of the
+    acceptance suite since v0.14.</p>
   </div>
 </section>
 
-<!-- ============ 06 CHRONICLE ============ -->
+<!-- ============ 07 CHRONICLE ============ -->
 <section class="chapter" id="chronicle">
   <div class="spawn-strip" data-cell="chronicle"></div>
   <div class="ch-inner narrow">
-    <div class="ch-no">06 · Chronicle</div>
+    <div class="ch-no">07 · Chronicle</div>
     <h2>Every version a proof.</h2>
     <ul class="chron">
       <li class="done"><span class="v">v0.13</span><span><b>Persistence</b> — Blake3 write-ahead log, crash recovery</span></li>
       <li class="done"><span class="v">v0.14</span><span><b>Kernel minimization</b> — state survives the reboot</span></li>
       <li class="done"><span class="v">v0.15</span><span><b>Trust anchors</b> — three-stage Ed25519 signature chain</span></li>
       <li class="done"><span class="v">v0.16</span><span><b>Cell contracts</b> — two keys become law</span></li>
-      <li class="now"><span class="v">v0.17</span><span><b>AI workloads</b> — in-cell inference, chat API, MCP</span></li>
+      <li class="now"><span class="v">v0.17</span><span><b>AI workloads</b> — in-cell inference, chat API, MCP tool cells</span></li>
       <li><span class="v">v0.18</span><span>Preemption, multicore, exclusive core pinning</span></li>
-      <li><span class="v">v0.19</span><span>Observability &amp; signed audit log</span></li>
-      <li><span class="v">v1.0</span><span>Production — built for banks, clinics, custody</span></li>
+      <li><span class="v">v0.19</span><span>Observability &amp; hash-chained audit log</span></li>
+      <li><span class="v">v0.20</span><span>SDK &amp; app lifecycle — signed app bundles</span></li>
+      <li><span class="v">v0.21+</span><span>ArkDB, RAG — applications as contracted cells</span></li>
+      <li><span class="v">v0.23</span><span>Hardware trust — IOMMU, TPM. Required before 1.0.</span></li>
     </ul>
   </div>
 </section>
@@ -529,7 +632,7 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
 <!-- ============ CODA ============ -->
 <footer id="coda">
   <p class="coda-line">What does not exist<br><em>cannot break.</em></p>
-  <div class="colophon">arkane os · written in rust · not a single line of c · mmxxvi</div>
+  <div class="colophon">arkane@2026</div>
 </footer>
 
 </main>
@@ -555,7 +658,7 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
       deadLabel: 'rgba(232,146,124,0.5)',
       dead: 'rgba(232,146,124,0.16)',
       filament: '214,192,143',
-      plankton: '236,231,221',
+      plankton: '148,210,140',
     },
     light: {
       cells: { sage: '#66835f', coral: '#c2613f', ice: '#5d7f96', sand: '#a98f54' },
@@ -564,7 +667,7 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
       deadLabel: 'rgba(194,97,63,0.6)',
       dead: 'rgba(194,97,63,0.22)',
       filament: '169,143,84',
-      plankton: '36,31,23',
+      plankton: '74,128,64',
     },
   };
   const pal = () => PALETTES[document.documentElement.dataset.theme] || PALETTES.dark;
@@ -1049,10 +1152,10 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
   const statDrift = $('#stat-drift');
   statRespawns.textContent = respawns;
 
-  function setHealer(down) {
-    healerDown = down;
-    statHealer.textContent = down ? 'DOWN' : 'online';
-    statHealer.className = down ? 'bad' : 'ok';
+  function setHealer(state) {            // 'online' | 'down' | 'restoring'
+    healerDown = state !== 'online';
+    statHealer.textContent = state === 'online' ? 'online' : state === 'down' ? 'DOWN' : 'restoring…';
+    statHealer.className = state === 'online' ? 'ok' : 'bad';
   }
   function setDrift() { statDrift.textContent = pendingDrift.length; }
   function countRespawn() {
@@ -1079,24 +1182,35 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
         alive--;
         hud.cells(alive, PLAY_TOTAL);
         if (cell.role === 'healer') {
-          // the healer itself is gone — nothing heals until the kernel
-          // restores it from the signed boot chain
-          setHealer(true);
+          // the healer itself is gone, and the healer has no healer.
+          // the kernel rebuilds it from the signed boot chain, then it must
+          // reload + verify its own state before it may act — this is SLOW.
+          setHealer('down');
           hud.sys('SYS_CELL_STOP');
           setTimeout(() => hud.sys('HEALER_DOWN'), 600);
-          setTimeout(() => {
-            hud.sys('BOOT_CHAIN_RESTORE');
-            playField.revive(cell);
-          }, 3600);
+          setTimeout(() => { hud.sys('BOOT_CHAIN_RESTORE'); setHealer('restoring'); }, 2800);
+          setTimeout(() => hud.sys('STATE_RELOAD_VERIFY'), 4600);
+          setTimeout(() => playField.revive(cell), 6500);
         } else {
           hud.sys('SYS_CELL_STOP');
           if (healerDown) {
+            // no healer online — the dead cell must wait as pending drift
             pendingDrift.push(cell);
             setDrift();
             setTimeout(() => hud.sys('DRIFT_UNHEALED'), 600);
           } else {
-            setTimeout(() => hud.sys('HEALER_DRIFT_DEAD'), 700);
-            setTimeout(() => playField.revive(cell), 1700 + Math.random() * 500);
+            setTimeout(() => { if (!healerDown) hud.sys('HEALER_DRIFT_DEAD'); }, 700);
+            setTimeout(() => {
+              // the healer may have died while this respawn was queued —
+              // then the cell joins the drift backlog and waits too
+              if (cell.alive) return;
+              if (healerDown) {
+                if (!pendingDrift.includes(cell)) { pendingDrift.push(cell); setDrift(); }
+                hud.sys('DRIFT_UNHEALED');
+              } else {
+                playField.revive(cell);
+              }
+            }, 1700 + Math.random() * 500);
           }
         }
       } else if (type === 'respawn') {
@@ -1105,8 +1219,8 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
         countRespawn();
         hud.sys('SYS_CELL_SPAWN');
         if (cell.role === 'healer') {
-          setHealer(false);
-          // back online: heal all pending drift, one by one
+          setHealer('online');
+          // back online: work through the backlog, cell by cell
           pendingDrift.splice(0).forEach((dead, i) => {
             setTimeout(() => {
               hud.sys('HEALER_DRIFT_DEAD');
@@ -1122,9 +1236,46 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
     },
   });
 
+  /* ---------- anatomy: click a component, read the truth ---------- */
+  (function anatomy() {
+    const info = $('#arch-info');
+    const nodes = document.querySelectorAll('#arch-stack .node');
+    const TEXTS = {
+      arkctl: ['// arkctl — operator CLI',
+        'One static binary. <span class="mono">validate · lint · render · diff · hash</span> offline; <span class="mono">apply</span> over mTLS + HTTP/2 + gRPC; <span class="mono">keys</span> manages the signer lifecycle — init, rotate with grace period, revoke.',
+        'Manifests are YAML, fuzzed with 1M+ adversarial inputs. The manifest fingerprint you compute locally round-trips with what the control plane saw — you can prove which state was applied.'],
+      gwadmin: ['// gw-admin — control plane & ACP healer',
+        'The control plane is not a kernel service — it is a cell like any other, with no special power beyond an Authority capability. It terminates mTLS, speaks HTTP/2 + gRPC, diffs desired vs. observed state and drives spawn / map / start.',
+        'The same cell is the <b>ACP healer</b>: it probes cell status, detects drift and respawns dead cells from their signed images. If gw-admin is ever compromised, the kernel contract check still bounds it — it cannot grant anything the target image does not declare.'],
+      gwpublic: ['// gw-public — chat API gateway',
+        'The OpenAI-compatible endpoint (<span class="mono">/v1/chat/completions</span>) as a cell — live since v0.17. It is the only cell holding the public NIC: external traffic never reaches a workload directly, it is translated, audited and capability-bounded at the membrane.'],
+      gwmcp: ['// gw-mcp — MCP tool host',
+        'Runs every MCP tool as its own contracted cell, discovered live instead of from a static registry — live since v0.17. A tool that tries to exfiltrate hits <span class="mono">SYS_ERR_RIGHTS</span>, dies alone, leaves an audit trail — and the agent keeps running.'],
+      inference: ['// inference cell',
+        'A real language model on its own <span class="mono">no_std</span> engine, token-identical to the reference implementation. The weights are a content-addressed, read-only mapping shared across cells — RAM dedup for free.',
+        'The cell holds no network capability. It can read its weights and answer over the gateway — structurally nothing else.'],
+      storage: ['// persistence cell',
+        'Durability lives in userspace: this cell mirrors the control-plane state and the Blake3-chained write-ahead log to its own virtio-blk disk and re-warms the kernel blob table after a reboot. <span class="mono">apply → reboot → state intact</span>, no re-apply — demonstrated end-to-end.'],
+      tools: ['// tool cells',
+        'Each MCP tool is one hardware-isolated cell with its own contract (<span class="mono">tool-echo</span> is the first). Tools cannot see each other, cannot see the model, cannot see the network — they see exactly the IPC channel gw-mcp granted them.'],
+      kernel: ['// exokernel',
+        'Capability check, memory mapping, IRQ routing, IPC. Nothing else — no drivers (one narrow, written-down exception: the durable root table), no network stack, no policy. About 10,000 lines of Rust.',
+        'Because everything that changes lives in cells, the kernel almost never needs an update — and a dead network stack is a cell respawn, not a reboot.'],
+      hw: ['// hardware',
+        'virtio-net and virtio-blk are driven from cells via MSI-X — no interrupt storms, no drivers in the kernel. IOMMU for DMA protection and TPM-anchored trust are the v0.23 hardware milestone, required before 1.0.'],
+    };
+    nodes.forEach(n => n.addEventListener('click', () => {
+      nodes.forEach(m => m.classList.remove('sel'));
+      n.classList.add('sel');
+      const t = TEXTS[n.dataset.k];
+      info.innerHTML = '<h3>' + t[0] + '</h3>' + t.slice(1).map(p => '<p>' + p + '</p>').join('');
+      hud.sys('SYS_CAP_BIND');
+    }));
+  })();
+
   /* ---------- terminal: the audited path, and the path that doesn't exist ---------- */
   const TERM_SCRIPT = [
-    { t: 'cmd', s: `curl arkane:8081/v1/chat/completions \\\n    -d '{"messages":[{"role":"user","content":"Who are you?"}]}'` },
+    { t: 'cmd', s: `curl arkane:8081/v1/chat/completions \\\n    -d '{"messages":[{"role":"user","content":"Once upon a time…"}]}'` },
     { t: 'pause', ms: 350 },
     { t: 'out', s: '<span class="dim">gw-public   the only cell holding a NIC · request audited · #4f2a91c3</span>' },
     { t: 'out', s: '<span class="route">gw-public → SYS_IPC_CALL → inference</span>' },
@@ -1132,7 +1283,7 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
     { t: 'out', s: '<span class="route">inference → SYS_IPC_REPLY → gw-public</span><span class="dim">   ← its only exit</span>' },
     { t: 'out', s: '<span class="deny">inference → internet                     ✗ path does not exist</span>' },
     { t: 'pause', ms: 500 },
-    { t: 'ans', s: '“I am a language model inside a cell of hardware.\n I cannot reach the network — I can only answer\n whoever called me. What you are reading left\n through the audited gateway.”' },
+    { t: 'ans', s: '“…there was a little boy and his dream.”' },
   ];
 
   let termStarted = false;
@@ -1214,7 +1365,7 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
     size();
     addEventListener('resize', size);
 
-    const N = innerWidth < 700 ? 50 : 110;
+    const N = innerWidth < 700 ? 105 : 265;
     const dots = Array.from({ length: N }, () => ({
       x: Math.random(),                  // 0..1 of width
       y: Math.random() * 3,              // 0..3 viewport-heights of virtual space
@@ -1239,7 +1390,7 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
       for (const d of dots) {
         ctx.beginPath();
         ctx.arc(d.x * W, (d.y % 1) * H, d.r * dpr, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${P.plankton},${0.10 + d.depth * 0.12})`;
+        ctx.fillStyle = `rgba(${P.plankton},${0.16 + d.depth * 0.18})`;
         ctx.fill();
       }
     }
@@ -1286,7 +1437,7 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
 
         ctx.beginPath();
         ctx.arc(sx, sy, d.r * dpr * (0.7 + d.depth * 0.5), 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${P.plankton},${0.07 + d.depth * 0.13})`;
+        ctx.fillStyle = `rgba(${P.plankton},${0.14 + d.depth * 0.20})`;
         ctx.fill();
       }
 
