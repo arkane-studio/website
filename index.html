@@ -764,7 +764,7 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
       this.onEvent = opts.onEvent || (() => {});
       this.cells = opts.cells.map(c => new Cell(c));
       this.particles = [];
-      this.filament = null;
+      this.filaments = [];
       this.nextFilament = 2200;
       this.mouse = { x: 0, y: 0, active: false };
       this.visible = false;
@@ -839,6 +839,22 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
       this.onEvent('respawn', cell);
     }
 
+    // directed filament from one cell to another; onArrive fires when it lands.
+    // kind: 'heal' (gw-admin respawns a cell) | 'kernel' (boot-chain restore)
+    pulse(from, to, opts = {}) {
+      const duration = opts.duration || 1100;
+      if (REDUCED) {
+        if (opts.onArrive) setTimeout(opts.onArrive, duration);
+        return;
+      }
+      this.filaments.push({
+        a: from, b: to, p: 0,
+        speed: 1 / duration,
+        kind: opts.kind || 'heal',
+        onArrive: opts.onArrive,
+      });
+    }
+
     loop() {
       if (!this.visible || this._running || REDUCED) return;
       this._running = true;
@@ -862,18 +878,27 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
       this.particles = this.particles.filter(p => (p.life -= dt * 0.0016) > 0);
       for (const p of this.particles) { p.x += p.vx * dt * 0.12; p.y += p.vy * dt * 0.12; }
 
-      this.nextFilament -= dt;
-      if (this.filament) {
-        this.filament.p += dt * 0.0009;
-        if (this.filament.p >= 1.15) this.filament = null;
-      } else if (this.nextFilament <= 0 && alive.length >= 2) {
-        const pool = alive.filter(c => c.role !== 'kernel');
-        if (pool.length >= 2) {
-          let a = pool[Math.floor(Math.random() * pool.length)], b = a;
-          while (b === a) b = pool[Math.floor(Math.random() * pool.length)];
-          this.filament = { a, b, p: 0 };
+      for (const f of this.filaments) {
+        f.p += dt * f.speed;
+        if (!f.arrived && f.p >= 1) {
+          f.arrived = true;
+          if (f.onArrive) f.onArrive();
         }
-        this.nextFilament = 2600 + Math.random() * 2600;
+      }
+      this.filaments = this.filaments.filter(f => f.p < 1.15);
+
+      // ambient mode wanders; interactive filaments are causal (pulse only)
+      if (this.mode !== 'interactive') {
+        this.nextFilament -= dt;
+        if (!this.filaments.length && this.nextFilament <= 0 && alive.length >= 2) {
+          const pool = alive.filter(c => c.role !== 'kernel');
+          if (pool.length >= 2) {
+            let a = pool[Math.floor(Math.random() * pool.length)], b = a;
+            while (b === a) b = pool[Math.floor(Math.random() * pool.length)];
+            this.filaments.push({ a, b, p: 0, speed: 0.0009, kind: 'ambient' });
+          }
+          this.nextFilament = 2600 + Math.random() * 2600;
+        }
       }
     }
 
@@ -883,21 +908,23 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
       ctx.clearRect(0, 0, w, h);
       const fontPx = Math.round(11 * this.dpr);
 
-      if (this.filament) {
-        const A = this.filament.a.center(w, h), B = this.filament.b.center(w, h);
+      for (const f of this.filaments) {
+        const A = f.a.center(w, h), B = f.b.center(w, h);
         const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2 - 40 * this.dpr;
+        const rgb = f.kind === 'heal' ? P.plankton : f.kind === 'kernel' ? P.kernel : P.filament;
+        const strong = f.kind !== 'ambient';
         ctx.beginPath();
         ctx.moveTo(A.x, A.y);
         ctx.quadraticCurveTo(mx, my, B.x, B.y);
-        ctx.strokeStyle = `rgba(${P.filament},0.18)`;
+        ctx.strokeStyle = `rgba(${rgb},${strong ? 0.32 : 0.18})`;
         ctx.lineWidth = this.dpr;
         ctx.stroke();
-        const p = Math.min(1, this.filament.p);
+        const p = Math.min(1, f.p);
         const ix = (1 - p) * (1 - p) * A.x + 2 * (1 - p) * p * mx + p * p * B.x;
         const iy = (1 - p) * (1 - p) * A.y + 2 * (1 - p) * p * my + p * p * B.y;
         ctx.beginPath();
-        ctx.arc(ix, iy, 2.4 * this.dpr, 0, TAU);
-        ctx.fillStyle = `rgba(${P.filament},0.9)`;
+        ctx.arc(ix, iy, (strong ? 3 : 2.4) * this.dpr, 0, TAU);
+        ctx.fillStyle = `rgba(${rgb},0.9)`;
         ctx.fill();
       }
 
@@ -1183,14 +1210,18 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
         hud.cells(alive, PLAY_TOTAL);
         if (cell.role === 'healer') {
           // the healer itself is gone, and the healer has no healer.
-          // the kernel rebuilds it from the signed boot chain, then it must
-          // reload + verify its own state before it may act — this is SLOW.
+          // the kernel rebuilds it from the signed boot chain — a slow
+          // kernel→gw-admin pulse; it lands only after reload + verify.
           setHealer('down');
           hud.sys('SYS_CELL_STOP');
           setTimeout(() => hud.sys('HEALER_DOWN'), 600);
-          setTimeout(() => { hud.sys('BOOT_CHAIN_RESTORE'); setHealer('restoring'); }, 2800);
+          setTimeout(() => {
+            hud.sys('BOOT_CHAIN_RESTORE');
+            setHealer('restoring');
+            const kernel = playField.cells.find(c => c.role === 'kernel');
+            playField.pulse(kernel, cell, { kind: 'kernel', duration: 3700, onArrive: () => playField.revive(cell) });
+          }, 2800);
           setTimeout(() => hud.sys('STATE_RELOAD_VERIFY'), 4600);
-          setTimeout(() => playField.revive(cell), 6500);
         } else {
           hud.sys('SYS_CELL_STOP');
           if (healerDown) {
@@ -1208,9 +1239,10 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
                 if (!pendingDrift.includes(cell)) { pendingDrift.push(cell); setDrift(); }
                 hud.sys('DRIFT_UNHEALED');
               } else {
-                playField.revive(cell);
+                const healer = playField.cells.find(c => c.role === 'healer');
+                playField.pulse(healer, cell, { kind: 'heal', onArrive: () => playField.revive(cell) });
               }
-            }, 1700 + Math.random() * 500);
+            }, 800 + Math.random() * 400);
           }
         }
       } else if (type === 'respawn') {
@@ -1224,8 +1256,7 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
           pendingDrift.splice(0).forEach((dead, i) => {
             setTimeout(() => {
               hud.sys('HEALER_DRIFT_DEAD');
-              playField.revive(dead);
-              setDrift();
+              playField.pulse(cell, dead, { kind: 'heal', onArrive: () => { playField.revive(dead); setDrift(); } });
             }, 600 + i * 420);
           });
           setDrift();
