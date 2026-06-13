@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Arkane OS — an operating system built from isolated cells</title>
-<meta name="description" content="Arkane OS is a research operating system written in Rust. A ~10,000-line exokernel with 23 syscalls; everything else — network, storage, AI inference — runs in hardware-isolated cells.">
+<title>Arkane OS — a specialised operating system for security, stability and less overhead</title>
+<meta name="description" content="Arkane OS is a specialised operating system written in Rust, built for security, stability and less overhead. A ~10,000-line exokernel with 23 syscalls; everything else — network, storage, AI inference — runs in hardware-isolated cells.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -424,10 +424,11 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
 <header id="hero">
   <canvas id="hero-canvas" aria-hidden="true"></canvas>
   <div class="hero-inner">
-    <div class="kicker">Arkane OS — a research operating system in Rust</div>
+    <div class="kicker">Arkane OS — a specialised operating system in Rust</div>
     <h1>An operating system<br><em>built from isolated cells.</em></h1>
-    <p class="hero-sub">A ~10,000-line kernel that almost never changes.
-    Everything else — network, storage, the AI model — runs in
+    <p class="hero-sub">Built for three things: <b>security</b>, <b>stability</b>
+    and <b>less overhead</b>. A ~10,000-line kernel that almost never changes —
+    everything else, from the network to the AI model, runs in
     <b>hardware-isolated cells</b> that update and heal like a server fleet.</p>
   </div>
   <div class="scroll-cue" aria-hidden="true"><span></span></div>
@@ -446,6 +447,10 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
     Isolation is not a check the kernel performs on every operation: it is wired
     into the page tables <b>once, at spawn</b>. Drivers, network and storage live
     in cells — so when they break or need an update, <b>the kernel doesn't</b>.</p>
+    <p class="prose">That is the whole bargain: a smaller surface to attack,
+    a kernel stable enough to leave alone, and nothing running that you never
+    asked for. <b>Security, stability, less overhead</b> — not features bolted on,
+    but what is left once everything unnecessary is gone.</p>
     <div class="numerals">
       <div class="nume"><span class="n">23</span><span class="l">syscalls,<br>the entire API</span></div>
       <div class="nume"><span class="n">~10k</span><span class="l">lines of Rust,<br>the whole kernel</span></div>
