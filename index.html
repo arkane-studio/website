@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Arkane OS — a specialised operating system for security, stability and less overhead</title>
-<meta name="description" content="Arkane OS is a specialised operating system written in Rust, built for security, stability and less overhead. A ~10,000-line exokernel with 23 syscalls; everything else — network, storage, AI inference — runs in hardware-isolated cells.">
+<meta name="description" content="Arkane OS is a specialised operating system written in Rust, built for security, stability and less overhead. A ~13,000-line exokernel with 24 syscalls; everything else — network, storage, AI inference — runs in hardware-isolated cells.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -332,16 +332,16 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
 .term-head .td:nth-child(2) { background: rgba(214,192,143,.5); }
 .term-head .td:nth-child(3) { background: rgba(157,184,154,.5); }
 .term-head :last-child { margin-left: 10px; }
-#term-body {
+.term-body {
   padding: 24px 24px 28px; font-family: var(--mono); font-size: 13px; line-height: 1.85;
   min-height: 300px; white-space: pre-wrap; word-break: break-word;
   color: #a39d8f;
 }
-#term-body .p { color: #9db89a; }
-#term-body .dim { color: #6e695e; }
-#term-body .route { color: #d6c08f; }
-#term-body .ans { color: #ece7dd; font-style: italic; font-family: var(--serif); font-size: 16px; line-height: 1.7; }
-#term-body .deny { color: #e8927c; }
+.term-body .p { color: #9db89a; }
+.term-body .dim { color: #6e695e; }
+.term-body .route { color: #d6c08f; }
+.term-body .ans { color: #ece7dd; font-style: italic; font-family: var(--serif); font-size: 16px; line-height: 1.7; }
+.term-body .deny { color: #e8927c; }
 .tcursor { display: inline-block; width: 7px; height: 15px; background: #9db89a; vertical-align: -2px; animation: blink 1s step-start infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
@@ -411,7 +411,7 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
 <div id="powerdown" aria-hidden="true"><div class="pd-line"></div></div>
 
 <aside id="hud" aria-hidden="true">
-  <div class="hud-row"><span class="hud-dot"></span>arkane v0.17 · up <span id="hud-up">00:00</span> · cells <span id="hud-cells">6/6</span></div>
+  <div class="hud-row"><span class="hud-dot"></span>arkane v0.21 · up <span id="hud-up">00:00</span> · cells <span id="hud-cells">7/7</span></div>
   <div class="hud-row hud-sys" id="hud-sys">SYS_WAIT</div>
 </aside>
 
@@ -427,7 +427,7 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
     <div class="kicker">Arkane OS — a specialised operating system in Rust</div>
     <h1>An operating system<br><em>built from isolated cells.</em></h1>
     <p class="hero-sub">Built for three things: <b>security</b>, <b>stability</b>
-    and <b>less overhead</b>. A ~10,000-line kernel that almost never changes —
+    and <b>less overhead</b>. A ~13,000-line kernel that almost never changes —
     everything else, from the network to the AI model, runs in
     <b>hardware-isolated cells</b> that update and heal like a server fleet.</p>
   </div>
@@ -452,8 +452,8 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
     asked for. <b>Security, stability, less overhead</b> — not features bolted on,
     but what is left once everything unnecessary is gone.</p>
     <div class="numerals">
-      <div class="nume"><span class="n">23</span><span class="l">syscalls,<br>the entire API</span></div>
-      <div class="nume"><span class="n">~10k</span><span class="l">lines of Rust,<br>the whole kernel</span></div>
+      <div class="nume"><span class="n">26</span><span class="l">syscalls,<br>the entire API</span></div>
+      <div class="nume"><span class="n">~13k</span><span class="l">lines of Rust,<br>the whole kernel</span></div>
       <div class="nume"><span class="n">0</span><span class="l">lines of C.<br>POSIX. shell.</span></div>
     </div>
   </div>
@@ -465,10 +465,12 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
   <div class="ch-inner">
     <div class="ch-no">02 · Isolation</div>
     <h2>Try to break it.</h2>
-    <p class="prose">This is the real v0.17 cluster — six cells around a kernel, each
+    <p class="prose">This is the real v0.21 cluster — the same handful of cells around a kernel, each
     with its own page table. Isolation is enforced by the MMU, not by policy.
     <b>Click a cell and watch what happens.</b> Then try killing
-    <b>gw-admin</b> — the control plane, which is also the <b>ACP&nbsp;healer</b>.</p>
+    <b>gw-admin</b> — the control plane, which is also the <b>ACP&nbsp;healer</b>.
+    And if you want to see where the chain of watchers really ends, kill the
+    <b>supervisor</b> first.</p>
     <div class="playground-frame">
       <canvas id="play-canvas"></canvas>
       <div class="play-stats mono">
@@ -482,11 +484,18 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
       </div>
     </div>
     <p class="caption">Crash → <span class="mono">HEALER_DRIFT_DEAD</span> → respawn: gw-admin heals
-    the drift within moments. Kill gw-admin and <b>nothing comes back</b> — cells that die in
-    the meantime pile up as pending drift, because the healer itself has no healer. Restoring it
-    takes noticeably longer: the kernel has to rebuild it from the signed boot chain and the
-    healer must reload and verify its state before it may act. Only once gw-admin is back
-    online does it work through the backlog, cell by cell.</p>
+    the drift within moments. gw-admin itself sits on the watch list of a tiny
+    <b>supervisor cell</b> that replays the signed boot recipe
+    (<span class="mono">SYS_CELL_RESPAWN_BOOT</span>) when a watched cell dies — cells that die
+    in the meantime pile up as pending drift, and restoring takes noticeably longer: the healer
+    must reload and verify its state before it may act. <b>What the acceptance suite proves</b>
+    is the persistence cell's kill&nbsp;→&nbsp;respawn; for gw-admin the arm is loaded but has
+    never fired outside this simulation — because there is <b>no outside kill switch for the
+    control plane at all</b>: the kernel refuses self-stop, and nobody else takes orders. The
+    playground lets you do what production won't. Kill the <b>supervisor itself</b> and it
+    stays dead — the supervisor has no supervisor (a mutual-supervision pair is on the
+    roadmap), and with it down, a dead watched cell stays down too. The chain of watchers ends
+    somewhere, and Arkane tells you exactly where.</p>
   </div>
 </section>
 
@@ -507,7 +516,7 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
         <div class="arch-label">gateway cells</div>
         <div class="arch-row g3">
           <button class="node" data-k="gwadmin" type="button">gw-admin<small>control plane · ACP healer</small></button>
-          <button class="node" data-k="gwpublic" type="button">gw-public<small>chat API · the only public NIC</small></button>
+          <button class="node" data-k="gwpublic" type="button">gw-public<small>chat API · web apps</small></button>
           <button class="node" data-k="gwmcp" type="button">gw-mcp<small>MCP tool host</small></button>
         </div>
         <div class="arch-flow">↓ capability-mediated IPC ↓</div>
@@ -515,16 +524,16 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
         <div class="arch-row g3">
           <button class="node" data-k="inference" type="button">inference<small>weights mapped read-only</small></button>
           <button class="node" data-k="storage" type="button">persistence<small>durable state · WAL</small></button>
-          <button class="node" data-k="tools" type="button">tool cells<small>one cell per MCP tool</small></button>
+          <button class="node" data-k="tools" type="button">tool cells<small>isolated MCP tools</small></button>
         </div>
-        <div class="arch-flow">↓ 23 syscalls — every one a capability check ↓</div>
+        <div class="arch-flow">↓ 26 syscalls — every one a capability check ↓</div>
         <button class="node" data-k="kernel" type="button">exokernel<small>capability check · memory mapping · IRQ routing · IPC — nothing else</small></button>
-        <button class="node" data-k="hw" type="button">hardware<small>virtio-net · virtio-blk · MSI-X · IOMMU (v0.23)</small></button>
+        <button class="node" data-k="hw" type="button">hardware<small>virtio-net · virtio-blk · MSI-X · IOMMU (v0.24)</small></button>
       </div>
       <div class="arch-info" id="arch-info">
         <h3>// select a component</h3>
-        <p>Everything shown here runs today in v0.17 — spawned, signed and
-        isolated on the real kernel.</p>
+        <p>Everything shown here runs today — spawned, signed and isolated
+        on the real kernel, preemptively scheduled across four cores.</p>
       </div>
     </div>
   </div>
@@ -543,8 +552,9 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
     <div class="contract mono">
       <div class="ct-head">cells/inference · signed ed25519 ✓</div>
       <pre><span class="m">#[arkane_contract(</span>
-    needs(memory ≤ 512 MiB, share::read),
-    <span class="r">forbid(net_in, net_out, spawn)</span>
+    needs(memory = "16MB"),
+    needs(share::read = "model"),
+    <span class="r">forbid(net::inbound, net::outbound, spawn)</span>
 <span class="m">)]</span></pre>
     </div>
     <p class="caption">What is forbidden here is not monitored — it is <b>never wired up</b>.</p>
@@ -559,11 +569,12 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
     <h2>The AI that cannot phone home.</h2>
     <p class="prose">A real language model runs inside the inference cell — its own
     <code>no_std</code> engine, token-identical to the reference implementation.
-    The only thing it can do is <b>answer whoever called it</b> — and the only cell
-    holding a network card is the gateway, where every request is audited.</p>
+    The only thing it can do is <b>answer whoever called it</b> — network cards exist
+    only in the three gateway cells, so every byte in or out crosses one of exactly
+    three audited membranes.</p>
     <div class="term-frame">
       <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span>gw-public :8081 · /v1/chat/completions</div>
-      <pre class="mono" id="term-body"></pre>
+      <pre class="mono term-body" id="term-body"></pre>
     </div>
     <p class="caption">Why can't it phone home? Not because a firewall says no — because
     <b>the path does not exist</b>. A cell receives exactly what its manifest grants,
@@ -579,11 +590,10 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
   name: inference
 <span class="m">spec:</span>
   image: prod.images.inference@blake3:9c41…   <span class="r"># signed — contract forbids net</span>
-  resources: { memory: 512MB, cpu_shares: 1.0 }
-  capabilities:
-    - name: model-weights
-      type: blob
-      spec: { hash: blake3:7c8a…, rights: [read] }
+  resources: { memory: 4MB, cpu_shares: 1.0, heap_kib: 16384 }
+  shares:
+    model: blake3:7c8a…                        <span class="r"># weights, mapped read-only</span>
+  capabilities: []
   <span class="r"># no mmio, no port, no endpoint —
   # a path to a network card is never created</span></pre>
     </div>
@@ -613,23 +623,145 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
   </div>
 </section>
 
-<!-- ============ 07 CHRONICLE ============ -->
+<!-- ============ 07 AUDIT ============ -->
+<section class="chapter" id="audit">
+  <div class="spawn-strip" data-cell="audit"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">07 · Audit</div>
+    <h2>Prove what ran.</h2>
+    <p class="prose">Seeing what runs is the easy half: the kernel attributes every
+    timer tick to the cell it hit, every cell carries a log ring, and every external
+    request gets a <b>trace id</b> that rides the IPC header into each cell it touches —
+    <span class="mono">arkctl top</span>, <span class="mono">arkctl logs --trace</span>.
+    The hard half is proving what ran <i>after the fact</i>. So every security-relevant
+    event — spawn, stop, crash, capability grant, contract refusal — becomes an
+    immutable block in a <b>Blake3 hash chain</b>, where each block's content hash
+    <i>is</i> the next block's back-link, mirrored block by block to disk. Verification
+    is offline: <b>the auditor needs the drive, not the running system.</b></p>
+    <div class="contract">
+      <div class="ct-head mono">arkctl audit · offline against the mirrored disk</div>
+      <pre>$ arkctl audit verify --store store.img --list
+<span class="m">audit chain OK: 23 blocks, head seq=22 hash=6b01c4…</span>
+seq=5   kind=spawn             cell=1   aux=0x3e8
+seq=9   kind=contract-refusal  cell=5   aux=0xc
+seq=14  kind=stop              cell=1   aux=0xa
+
+$ printf '\x01' | dd of=store.img seek=571432 …   <span class="r"># flip ONE byte, anywhere in one block</span>
+$ arkctl audit verify --store store.img
+<span class="r">audit verify FAILED: TAMPER: block seq=4 does not
+hash to its stored id (content was modified)</span>
+
+$ arkctl audit anchor --store store.img --key signer.key --out anchor.bin
+<span class="m">anchored: seq=22 head=6b01c4… → anchor.bin</span>   <span class="r"># Ed25519, operator key — the kernel never signs</span></pre>
+    </div>
+    <p class="prose">And the honest boundary, stated exactly: the chain proves tampering
+    and gaps <b>after its last verified anchor</b>. An attacker who controls the kernel
+    <i>before</i> the first anchor can rewrite the story up to that point. In-system
+    anchoring keys arrive with the keystore (v0.21); external anchoring later. Until
+    then, this sentence is the precise edge of the claim — not a footnote to it.</p>
+    <p class="caption">This is an acceptance gate, run on every merge: flip one byte in
+    the mirrored chain — verify names the lying block. Flip it back — the chain is green
+    again. Detection is exact, not approximate.</p>
+  </div>
+</section>
+
+<!-- ============ 08 SEALED ============ -->
+<section class="chapter" id="sealed">
+  <div class="spawn-strip" data-cell="sealed"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">08 · Sealed</div>
+    <h2>Nothing readable on the disk.</h2>
+    <p class="prose">The audit chain proves what ran. This proves what it can’t read.
+    Every app-data body is encrypted before it is mirrored to disk — XChaCha20-Poly1305
+    under a key that lives only in a <b>net-free keystore cell</b>, unlocked once per boot
+    and held only in RAM. The acceptance gate is a single command anyone can run:
+    <span class="mono">strings store.img</span> after a full notes round-trip finds
+    <b>no plaintext body</b>. Flip one ciphertext byte and the read fails loudly — an
+    AEAD error, never silent garbage.</p>
+    <div class="contract">
+      <div class="ct-head mono">the headline gate · run it yourself</div>
+      <pre>$ strings crates/arkane-kernel/store.img | grep -c "secret note body"
+<span class="m">0</span>   <span class="dim"># the note is on disk — as ciphertext</span>
+
+$ arkctl secrets set db-password --value-stdin   <span class="r"># by name, never by value</span>
+$ arkctl secrets grant db-password 7             <span class="dim"># only cell 7 may read it</span></pre>
+    </div>
+    <p class="prose"><b>The app never holds the credential.</b> An MCP agent calls a
+    token-protected tool through the gateway; the gateway fetches the token from the
+    keystore per call and injects it, the target verifies it against its own grant —
+    and the agent never sees, sends, or can override it. A fully compromised app can’t
+    leak a secret it never had. That is the difference from a container, where the app
+    almost always holds its own credentials in an env var.</p>
+    <p class="prose">At the edges: the agent gateway can terminate <b>TLS 1.3</b> (optional,
+    off by default — the QEMU dev default is honest plaintext on a LAN), and the
+    read-only console gains its first write — stopping a cell — behind a
+    per-launch token on top of loopback.</p>
+    <p class="caption">The honest boundary, stated exactly: <b>at rest means the disk.</b>
+    The kernel’s in-RAM blob table still holds plaintext while the machine runs —
+    the same edge as “it runs in QEMU.” And the key hierarchy is real, but
+    <b>you are its recovery</b>: lose both the operator key and the exported recovery file
+    and the data is gone, by design — no in-system escrow to steal.</p>
+  </div>
+</section>
+
+<!-- ============ 09 GET IT ============ -->
+<section class="chapter" id="getit">
+  <div class="spawn-strip" data-cell="getit"></div>
+  <div class="ch-inner">
+    <div class="ch-no">09 · Get it</div>
+    <h2>Three commands, and it runs.</h2>
+    <p class="prose">Up to here you could only read. This is what the v0.20 line added:
+    <b>the whole OS builds as one signed artifact</b>. <span class="mono">make image</span>
+    produces the kernel binary, the baked-in cells — each individually signed — fresh disks,
+    and a manifest that names every baked hash, signed as one Ed25519 unit.
+    <span class="mono">arkctl image verify</span> checks that receipt offline; the bundled
+    <span class="mono">qemu-run.sh</span> boots exactly what was verified. No installer,
+    no download portal — a repository and a receipt.</p>
+    <div class="term-frame">
+      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span>arkane-os · from clone to running system</div>
+      <pre class="mono term-body" id="getit-body"></pre>
+    </div>
+    <p class="prose">Installing an app is the same trust decision the kernel makes at spawn.
+    A bundle is one content-addressed unit — manifest plus signed cell image — and
+    <span class="mono">arkctl app install</span> verifies it against the same root-signed
+    whitelist the kernel bakes in, <b>refusing before any network is touched</b>. Your own
+    cell starts as <span class="mono">arkctl new</span>: one crate
+    (<span class="mono">arkane-sdk</span>), a signed contract,
+    <span class="mono">arkctl bundle pack</span>. And <span class="mono">arkctl
+    dashboard</span> is the first picture an outsider gets of the running system — a
+    console speaking the exact RPCs <span class="mono">arkctl metrics</span> and
+    <span class="mono">arkctl logs</span> speak, served on loopback only — read-only, with a single
+    token-gated write (stop a cell).</p>
+    <p class="caption">The honest edges, stated exactly: the image targets QEMU — bare metal
+    is a named trigger, not a promise. A fresh checkout generates its own key material; the
+    chain — root → whitelist → per-image signature — is real, but <b>you are its root</b>
+    (production keys arrive via <span class="mono">arkctl keys</span>). A brand-new cell is
+    baked in at <span class="mono">make image</span> time before install can spawn it by
+    hash — uploading images into a running system is deliberately not a path. The CI builds
+    these same signed artifacts on every push to main, as provider-neutral stages: switching
+    CI vendors is a config change, not a build change.</p>
+  </div>
+</section>
+
+<!-- ============ 10 CHRONICLE ============ -->
 <section class="chapter" id="chronicle">
   <div class="spawn-strip" data-cell="chronicle"></div>
   <div class="ch-inner narrow">
-    <div class="ch-no">07 · Chronicle</div>
+    <div class="ch-no">10 · Chronicle</div>
     <h2>Every version a proof.</h2>
     <ul class="chron">
       <li class="done"><span class="v">v0.13</span><span><b>Persistence</b> — Blake3 write-ahead log, crash recovery</span></li>
       <li class="done"><span class="v">v0.14</span><span><b>Kernel minimization</b> — state survives the reboot</span></li>
       <li class="done"><span class="v">v0.15</span><span><b>Trust anchors</b> — three-stage Ed25519 signature chain</span></li>
       <li class="done"><span class="v">v0.16</span><span><b>Cell contracts</b> — two keys become law</span></li>
-      <li class="now"><span class="v">v0.17</span><span><b>AI workloads</b> — in-cell inference, chat API, MCP tool cells</span></li>
-      <li><span class="v">v0.18</span><span>Preemption, multicore, exclusive core pinning</span></li>
-      <li><span class="v">v0.19</span><span>Observability &amp; hash-chained audit log</span></li>
-      <li><span class="v">v0.20</span><span>SDK &amp; app lifecycle — signed app bundles</span></li>
-      <li><span class="v">v0.21+</span><span>ArkDB, RAG — applications as contracted cells</span></li>
-      <li><span class="v">v0.23</span><span>Hardware trust — IOMMU, TPM. Required before 1.0.</span></li>
+      <li class="done"><span class="v">v0.17</span><span><b>AI workloads</b> — in-cell inference, chat API, MCP tool cells</span></li>
+      <li class="done"><span class="v">v0.18</span><span><b>Preemption &amp; multicore</b> — time slices, four cores, exclusive core ownership as a capability</span></li>
+      <li class="done"><span class="v">v0.19</span><span><b>Observability &amp; audit</b> — per-cell CPU time, log rings, request tracing, a tamper-evident audit chain, reproducible benchmarks</span></li>
+      <li class="done"><span class="v">v0.20</span><span><b>SDK &amp; app lifecycle</b> — signed app bundles, one-command install, the OS as a signed CI-built image, a read-only console</span></li>
+      <li class="done"><span class="v">v0.21</span><span><b>Data protection</b> — encryption at rest (nothing readable on the disk), a net-free keystore, credentials an app never holds, optional TLS at the edge, a token-gated dashboard stop</span></li>
+      <li class="now"><span class="v">v0.22</span><span>Operator console — a web login with roles on the admin plane, so the cluster is configured through a browser and not only through the CLI</span></li>
+      <li><span class="v">v0.23</span><span>ArkDB — a database as a contracted cell, benchmarked before claimed</span></li>
+      <li><span class="v">v0.24</span><span>Hardware trust — IOMMU, TPM. Required before 1.0.</span></li>
     </ul>
   </div>
 </section>
@@ -845,7 +977,7 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
     }
 
     // directed filament from one cell to another; onArrive fires when it lands.
-    // kind: 'heal' (gw-admin respawns a cell) | 'kernel' (boot-chain restore)
+    // kind: 'heal' (gw-admin respawns a cell) | 'kernel' (supervisor replays the signed boot recipe)
     pulse(from, to, opts = {}) {
       const duration = opts.duration || 1100;
       if (REDUCED) {
@@ -1103,18 +1235,25 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
 
   /* ---------- boot sequence ---------- */
   const BOOT_LINES = [
-    'arkane-kernel v0.17 · x86_64 · <span class="hl">exokernel</span>',
+    'arkane-kernel v0.21 · x86_64 · <span class="hl">exokernel</span>',
     '[0.000] trust: whitelist verified · root ed25519 <span class="ok">✓</span>',
     plugged ? '[0.002] <span class="warn">wal: unclean shutdown detected · replaying …</span>' : null,
     plugged ? '[0.006] wal: state restored · #' + stateHash() + ' <span class="ok">✓</span>' : null,
+    '[0.009] smp: 4 cores online',
     '[0.011] blob: boot_reconstruct · roots warmed',
     '[0.013] spawn cell 10 <span class="hl">gw-admin</span>    sig <span class="ok">✓</span>',
     '[0.015] spawn cell 11 <span class="hl">storage</span>     sig <span class="ok">✓</span>',
     '[0.018] spawn cell 15 <span class="hl">gw-public</span>   sig <span class="ok">✓</span>',
     '[0.020] spawn cell 16 <span class="hl">gw-mcp</span>      sig <span class="ok">✓</span>',
-    '[0.024] spawn cell 17 <span class="hl">inference</span>   sig <span class="ok">✓</span> · model mapped ro',
-    '[0.026] sched: cooperative · idle hlt',
-    'arkane: cluster ready · <span class="ok">0 drift</span>',
+    '[0.022] spawn cell 17 <span class="hl">supervisor</span>  sig <span class="ok">✓</span>',
+    '[0.023] spawn cell 18 <span class="hl">keystore</span>    sig <span class="ok">✓</span> · net-free · KEK ram-only',
+    '[0.026] sched: preemptive · time slices · static core partitions',
+    '[0.028] audit: hash chain rooted · every spawn a block · mirror follows',
+    '[0.031] apply: <span class="hl">inference</span> sig <span class="ok">✓</span> · model mapped ro',
+    '[0.034] apply: <span class="hl">tool-echo</span> sig <span class="ok">✓</span>',
+    '[0.036] obs: per-cell ticks · log rings · trace ids <span class="ok">live</span>',
+    '[0.038] seal: app-data encrypted at rest · <span class="ok">strings store.img</span> finds no plaintext',
+    'arkane: cluster ready · <span class="ok">0 drift</span> · <span class="ok">mirror in sync</span>',
   ].filter(Boolean);
 
   async function boot() {
@@ -1175,9 +1314,10 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
   });
 
   /* ---------- playground with honest healer mechanics ---------- */
-  const PLAY_TOTAL = 6;
+  const PLAY_TOTAL = 7;
   let alive = PLAY_TOTAL;
   let healerDown = false;
+  let supervisorDown = false;
   const pendingDrift = [];
   const statRespawns = $('#stat-respawns');
   const statHealer = $('#stat-healer');
@@ -1201,8 +1341,9 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
     wobble: 0.06,
     drift: 0.012,
     cells: [
-      { x: 0.50, y: 0.46, r: 30, color: 'sage',  label: 'kernel',    role: 'kernel' },
-      { x: 0.18, y: 0.30, r: 62, color: 'sage',  label: 'gw-admin',  role: 'healer' },
+      { x: 0.50, y: 0.46, r: 30, color: 'sage',  label: 'kernel',     role: 'kernel' },
+      { x: 0.18, y: 0.30, r: 62, color: 'sage',  label: 'gw-admin',   role: 'healer' },
+      { x: 0.36, y: 0.14, r: 38, color: 'sand',  label: 'supervisor', role: 'supervisor' },
       { x: 0.38, y: 0.76, r: 56, color: 'ice',   label: 'gw-public' },
       { x: 0.64, y: 0.22, r: 54, color: 'ice',   label: 'gw-mcp' },
       { x: 0.84, y: 0.52, r: 66, color: 'coral', label: 'inference' },
@@ -1214,19 +1355,31 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
         alive--;
         hud.cells(alive, PLAY_TOTAL);
         if (cell.role === 'healer') {
-          // the healer itself is gone, and the healer has no healer.
-          // the kernel rebuilds it from the signed boot chain — a slow
-          // kernel→gw-admin pulse; it lands only after reload + verify.
+          // the healer itself is gone.  Its watcher is the tiny
+          // supervisor cell: on its next heartbeat it replays the
+          // signed boot recipe (SYS_CELL_RESPAWN_BOOT) — the pulse
+          // lands only after the healer reloaded + verified its state.
+          // With the supervisor dead there is no watcher left: the
+          // healer stays down and drift accumulates (truthful — a
+          // mutual-supervision pair is a named roadmap trigger).
           setHealer('down');
           hud.sys('SYS_CELL_STOP');
           setTimeout(() => hud.sys('HEALER_DOWN'), 600);
-          setTimeout(() => {
-            hud.sys('BOOT_CHAIN_RESTORE');
-            setHealer('restoring');
-            const kernel = playField.cells.find(c => c.role === 'kernel');
-            playField.pulse(kernel, cell, { kind: 'kernel', duration: 3700, onArrive: () => playField.revive(cell) });
-          }, 2800);
-          setTimeout(() => hud.sys('STATE_RELOAD_VERIFY'), 4600);
+          if (!supervisorDown) {
+            setTimeout(() => {
+              hud.sys('SYS_CELL_RESPAWN_BOOT');
+              setHealer('restoring');
+              const sup = playField.cells.find(c => c.role === 'supervisor');
+              playField.pulse(sup, cell, { kind: 'kernel', duration: 3700, onArrive: () => playField.revive(cell) });
+            }, 2800);
+            setTimeout(() => hud.sys('STATE_RELOAD_VERIFY'), 4600);
+          }
+        } else if (cell.role === 'supervisor') {
+          // the supervisor has no supervisor.  It stays dead until a
+          // reboot — and while it is down, a dead healer stays down.
+          supervisorDown = true;
+          hud.sys('SYS_CELL_STOP');
+          setTimeout(() => hud.sys('SUPERVISOR_DOWN'), 600);
         } else {
           hud.sys('SYS_CELL_STOP');
           if (healerDown) {
@@ -1278,27 +1431,27 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
     const nodes = document.querySelectorAll('#arch-stack .node');
     const TEXTS = {
       arkctl: ['// arkctl — operator CLI',
-        'One static binary. <span class="mono">validate · lint · render · diff · hash</span> offline; <span class="mono">apply</span> over mTLS + HTTP/2 + gRPC; <span class="mono">keys</span> manages the signer lifecycle — init, rotate with grace period, revoke.',
+        'One static binary. <span class="mono">validate · lint · render · diff · hash</span> offline; <span class="mono">apply</span> over mTLS + HTTP/2 + gRPC; <span class="mono">keys</span> manages the signer lifecycle — init, rotate with grace period, revoke. Since v0.20 it is also the app lifecycle: <span class="mono">bundle pack · app install · image build · image verify</span> — signed bundles in, a signed OS image out — and <span class="mono">dashboard</span>, a console over the same RPCs — read-only views plus, since v0.21, a token-gated cell stop.',
         'Manifests are YAML, fuzzed with 1M+ adversarial inputs. The manifest fingerprint you compute locally round-trips with what the control plane saw — you can prove which state was applied.'],
       gwadmin: ['// gw-admin — control plane & ACP healer',
         'The control plane is not a kernel service — it is a cell like any other, with no special power beyond an Authority capability. It terminates mTLS, speaks HTTP/2 + gRPC, diffs desired vs. observed state and drives spawn / map / start.',
-        'The same cell is the <b>ACP healer</b>: it probes cell status, detects drift and respawns dead cells from their signed images. If gw-admin is ever compromised, the kernel contract check still bounds it — it cannot grant anything the target image does not declare.'],
-      gwpublic: ['// gw-public — chat API gateway',
-        'The OpenAI-compatible endpoint (<span class="mono">/v1/chat/completions</span>) as a cell — live since v0.17. It is the only cell holding the public NIC: external traffic never reaches a workload directly, it is translated, audited and capability-bounded at the membrane.'],
+        'The same cell is the <b>ACP healer</b>: it probes cell status, detects drift and respawns dead cells from their signed images. The healer itself is watched by a tiny <b>supervisor cell</b> that replays its signed boot recipe if it dies. If gw-admin is ever compromised, the kernel contract check still bounds it — it cannot grant anything the target image does not declare.'],
+      gwpublic: ['// gw-public — human-facing gateway',
+        'The OpenAI-compatible endpoint (<span class="mono">/v1/chat/completions</span>) and the web apps (a notes app is the first) as one cell — live since v0.17. Network cards exist only in the three gateways, so every byte of traffic crosses one of exactly three audited membranes; workloads are never reachable directly.'],
       gwmcp: ['// gw-mcp — MCP tool host',
-        'Runs every MCP tool as its own contracted cell, discovered live instead of from a static registry — live since v0.17. A tool that tries to exfiltrate hits <span class="mono">SYS_ERR_RIGHTS</span>, dies alone, leaves an audit trail — and the agent keeps running.'],
+        'One MCP endpoint for agents; the tools behind it run in contracted cells, discovered live instead of from a static registry — one cell can serve a single tool or a whole family. A tool that tries to exfiltrate hits <span class="mono">SYS_ERR_RIGHTS</span>, dies alone, leaves an audit trail — and the agent keeps running.'],
       inference: ['// inference cell',
         'A real language model on its own <span class="mono">no_std</span> engine, token-identical to the reference implementation. The weights are a content-addressed, read-only mapping shared across cells — RAM dedup for free.',
         'The cell holds no network capability. It can read its weights and answer over the gateway — structurally nothing else.'],
       storage: ['// persistence cell',
         'Durability lives in userspace: this cell mirrors the control-plane state and the Blake3-chained write-ahead log to its own virtio-blk disk and re-warms the kernel blob table after a reboot. <span class="mono">apply → reboot → state intact</span>, no re-apply — demonstrated end-to-end.'],
       tools: ['// tool cells',
-        'Each MCP tool is one hardware-isolated cell with its own contract (<span class="mono">tool-echo</span> is the first). Tools cannot see each other, cannot see the model, cannot see the network — they see exactly the IPC channel gw-mcp granted them.'],
+        'Tools run in hardware-isolated cells with their own signed contracts (<span class="mono">tool-echo</span> is the first; one cell may serve several related tools). Tool cells cannot see each other, cannot see the model, cannot see the network — they see exactly the IPC channel gw-mcp granted them.'],
       kernel: ['// exokernel',
-        'Capability check, memory mapping, IRQ routing, IPC. Nothing else — no drivers (one narrow, written-down exception: the durable root table), no network stack, no policy. About 10,000 lines of Rust.',
-        'Because everything that changes lives in cells, the kernel almost never needs an update — and a dead network stack is a cell respawn, not a reboot.'],
+        'Capability check, memory mapping, IRQ routing, IPC — and since v0.18 a preemptive scheduler: time slices per cell, four cores, each cell statically partitioned onto exactly one. Nothing else — no drivers (one narrow, written-down exception: the durable root table), no network stack, no policy. About 13,000 lines of Rust.',
+        'A core can even be owned <b>exclusively</b> — declared in the signed contract, granted in the manifest, enforced at spawn: no other cell ever enters it. Because everything that changes lives in cells, the kernel almost never needs an update — and a dead network stack is a cell respawn, not a reboot.'],
       hw: ['// hardware',
-        'virtio-net and virtio-blk are driven from cells via MSI-X — no interrupt storms, no drivers in the kernel. IOMMU for DMA protection and TPM-anchored trust are the v0.23 hardware milestone, required before 1.0.'],
+        'virtio-net and virtio-blk are driven from cells via MSI-X — no interrupt storms, no drivers in the kernel. IOMMU for DMA protection and TPM-anchored trust are the v0.24 hardware milestone, required before 1.0.'],
     };
     nodes.forEach(n => n.addEventListener('click', () => {
       nodes.forEach(m => m.classList.remove('sel'));
@@ -1313,7 +1466,7 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
   const TERM_SCRIPT = [
     { t: 'cmd', s: `curl arkane:8081/v1/chat/completions \\\n    -d '{"messages":[{"role":"user","content":"Once upon a time…"}]}'` },
     { t: 'pause', ms: 350 },
-    { t: 'out', s: '<span class="dim">gw-public   the only cell holding a NIC · request audited · #4f2a91c3</span>' },
+    { t: 'out', s: '<span class="dim">gw-public   one of three audited gateways · request logged · #4f2a91c3</span>' },
     { t: 'out', s: '<span class="route">gw-public → SYS_IPC_CALL → inference</span>' },
     { t: 'out', s: '<span class="dim">inference   computes · greedy · token-identical to reference</span>' },
     { t: 'out', s: '<span class="route">inference → SYS_IPC_REPLY → gw-public</span><span class="dim">   ← its only exit</span>' },
@@ -1322,16 +1475,42 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
     { t: 'ans', s: '“…there was a little boy and his dream.”' },
   ];
 
-  let termStarted = false;
-  new IntersectionObserver((es, io) => {
-    if (!es.some(e => e.isIntersecting) || termStarted) return;
-    termStarted = true; io.disconnect();
-    runTerm();
-  }, { threshold: 0.4 }).observe($('#term-body'));
+  /* the getit terminal: real commands, real output shapes — from clone to
+     running system.  Hashes are abbreviated; keys are per-checkout (v0.15). */
+  const GETIT_SCRIPT = [
+    { t: 'cmd', s: 'git clone https://github.com/arkane-studio/arkane-os && cd arkane-os && make image' },
+    { t: 'pause', ms: 300 },
+    { t: 'out', s: '<span class="dim">==> make image: v0.21-d50ccb3 → dist-image/arkane-os-v0.21-d50ccb3</span>' },
+    { t: 'out', s: '<span class="dim">built OS image · kernel + 27 baked cells + manifest, signed ed25519 · 7 files</span>' },
+    { t: 'cmd', s: 'arkctl image verify dist-image/arkane-os-v0.21-d50ccb3' },
+    { t: 'out', s: 'OK  dist-image/arkane-os-v0.21-d50ccb3\n<span class="dim">  version         v0.21-d50ccb3\n  signer          f778… </span><span class="route">(whitelisted)</span><span class="dim">\n  kernel blake3   f062…\n  cells baked     27</span>' },
+    { t: 'cmd', s: 'dist-image/arkane-os-v0.21-d50ccb3/qemu-run.sh' },
+    { t: 'out', s: '[smp] 4 cores online · cluster ready\n<span class="dim">gw-admin :9000 mTLS · chat :8081 · mcp :8082</span>' },
+    { t: 'pause', ms: 350 },
+    { t: 'cmd', s: 'arkctl app install spin' },
+    { t: 'out', s: '<span class="dim">installing \'spin\' from apps/spin.arkbundle (content-address 51c9…)</span>\nApply ok: 2 ops completed' },
+    { t: 'cmd', s: 'arkctl app install shady-vendor.arkbundle' },
+    { t: 'out', s: '<span class="deny">bundle verify failed (refusing to install): SignerNotAllowed</span>' },
+    { t: 'pause', ms: 400 },
+    { t: 'cmd', s: 'arkctl dashboard' },
+    { t: 'out', s: '<span class="route">serving http://127.0.0.1:8090/</span> <span class="dim">· proxying gw-admin (read-only)</span>' },
+    { t: 'ans', s: 'Open it — the first picture of the running system.' },
+  ];
 
-  async function runTerm() {
-    const body = $('#term-body');
-    for (const step of TERM_SCRIPT) {
+  function armTerm(sel, script) {
+    let started = false;
+    const el = $(sel);
+    new IntersectionObserver((es, io) => {
+      if (!es.some(e => e.isIntersecting) || started) return;
+      started = true; io.disconnect();
+      runTermScript(el, script);
+    }, { threshold: 0.4 }).observe(el);
+  }
+  armTerm('#term-body', TERM_SCRIPT);
+  armTerm('#getit-body', GETIT_SCRIPT);
+
+  async function runTermScript(body, script) {
+    for (const step of script) {
       if (step.t === 'pause') { await sleep(step.ms); continue; }
       if (step.t === 'cmd') {
         const line = document.createElement('div');
@@ -1355,11 +1534,13 @@ html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
       } else {
         const div = document.createElement('div');
         div.innerHTML = step.s;
-        div.style.opacity = '0';
-        div.style.transition = 'opacity .4s';
         body.appendChild(div);
-        requestAnimationFrame(() => div.style.opacity = '1');
-        await sleep(380);
+        if (!REDUCED) {
+          div.style.opacity = '0';
+          div.style.transition = 'opacity .4s';
+          requestAnimationFrame(() => div.style.opacity = '1');
+          await sleep(380);
+        }
       }
     }
   }
