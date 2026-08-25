@@ -52,7 +52,6 @@
   --glass: rgba(243,238,227,0.55);
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
 body {
   background: var(--ink);
   color: var(--bone);
@@ -774,7 +773,6 @@ $ arkctl secrets grant db-password 7             <span class="dim"># only cell 7
 
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/ScrollTrigger.min.js" defer></script>
 
@@ -1694,13 +1692,9 @@ $ arkctl secrets grant db-password 7             <span class="dim"># only cell 7
     })();
   })();
 
-  /* ---------- smooth scroll + parallax (CDN-dependent, graceful) ---------- */
+  /* ---------- scroll-linked parallax (CDN-dependent, graceful) ---------- */
   function initMotionLibs() {
     if (REDUCED) return;
-    if (window.Lenis) {
-      const lenis = new Lenis({ lerp: 0.1 });
-      (function raf(t) { lenis.raf(t); requestAnimationFrame(raf); })();
-    }
     if (window.gsap && window.ScrollTrigger) {
       gsap.registerPlugin(ScrollTrigger);
       gsap.to('.hero-inner', {

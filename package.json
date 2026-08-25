@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "ARKANE System Interface",
   "scripts": {
-    "build": "echo 'No build needed'"
+    "build": "echo 'No build needed'",
+    "test": "node tests/scroll-behavior.test.js"
   }
 }
