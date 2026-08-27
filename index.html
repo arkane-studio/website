@@ -1698,9 +1698,9 @@ $ arkctl secrets grant db-password 7             <span class="dim"># only cell 7
   function initMotionLibs() {
     if (REDUCED) return;
     if (window.Lenis) {
-      // Keep the intended smooth motion, but use a short, bounded animation
-      // instead of the former low-lerp tail that made wheel input feel delayed.
-      const lenis = new Lenis({ duration: 0.45 });
+      // Native scrolling is consistent across Mac trackpads and discrete mouse
+      // wheels; Lenis still remains available for non-wheel behavior.
+      const lenis = new Lenis({ smoothWheel: false });
       (function raf(t) { lenis.raf(t); requestAnimationFrame(raf); })();
     }
     if (window.gsap && window.ScrollTrigger) {
