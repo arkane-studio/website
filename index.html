@@ -794,6 +794,18 @@ $ arkctl secrets grant db-password 7             <span class="dim"># only cell 7
     off by default — the QEMU dev default is honest plaintext on a LAN), and the
     read-only console gains its first write — stopping a cell — behind a
     per-launch token on top of loopback.</p>
+    <p class="prose">That console is where <b>v0.22</b> continues — in acceptance now,
+    green under QEMU, not yet tagged. Login is TLS on <span class="mono">:9443</span>,
+    the password is checked by Argon2id inside the net-free auth cell, and the session is
+    an HttpOnly, Secure, SameSite=Strict cookie carrying one of three roles — viewer,
+    operator, admin. Every write runs the same order — CSRF token, server-side role
+    check, audit entry first — across the cell lifecycle (stop, start, and restart as an
+    honest stop → respawn → start, so the kernel hands back a <b>new cell id</b>, proven in
+    the serial log), a secrets inventory that lists names and grants but structurally never
+    a value, and a manifest deploy whose diff preview mutates nothing and whose invalid
+    input is refused with a readable reason, fail-closed. Five failed logins return
+    <span class="mono">429</span>; every accepted write is hash-chained under the acting
+    user’s digest.</p>
     <p class="caption">The honest boundary, stated exactly: <b>at rest means the disk.</b>
     The kernel’s in-RAM blob table still holds plaintext while the machine runs —
     the same edge as “it runs in QEMU.” And the key hierarchy is real, but
@@ -857,7 +869,7 @@ $ arkctl secrets grant db-password 7             <span class="dim"># only cell 7
       <li class="done"><span class="v">v0.19</span><span><b>Observability &amp; audit</b> — per-cell CPU time, log rings, request tracing, a tamper-evident audit chain, reproducible benchmarks<i class="dot" aria-hidden="true"></i><span class="sr-only"> — shipped</span></span></li>
       <li class="done"><span class="v">v0.20</span><span><b>SDK &amp; app lifecycle</b> — signed app bundles, one-command install, the OS as a signed CI-built image, a read-only console<i class="dot" aria-hidden="true"></i><span class="sr-only"> — shipped</span></span></li>
       <li class="done"><span class="v">v0.21</span><span><b>Data protection</b> — encryption at rest (nothing readable on the disk), a net-free keystore, credentials an app never holds, optional TLS at the edge, a token-gated dashboard stop<i class="dot" aria-hidden="true"></i><span class="sr-only"> — shipped</span></span></li>
-      <li class="now"><span class="v">v0.22</span><span>Operator console — a web login with roles on the admin plane, so the cluster is configured through a browser and not only through the CLI</span></li>
+      <li class="now"><span class="v">v0.22</span><span>Operator console — browser login with roles (Argon2id in a net-free auth cell), server-side RBAC and CSRF on every write, cell lifecycle (stop/start/restart), a value-free secrets inventory and manifest deploy with a diff preview — each write CSRF-gated, role-checked and hash-chain audited. In acceptance now, tag pending.</span></li>
       <li><span class="v">v0.23</span><span>ArkDB — a database as a contracted cell, benchmarked before claimed<span class="sr-only"> — planned</span></span></li>
       <li><span class="v">v0.24</span><span>Hardware trust — IOMMU, TPM. Required before 1.0.<span class="sr-only"> — planned</span></span></li>
     </ul>
