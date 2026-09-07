@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Storage — Arkane OS</title>
+<meta name="description" content="No filesystem tower: the kernel multiplexes one block device, everything else — hash-addressed blobs, WAL, encryption — lives in cells. One audited virtio-blk driver instead of a storage stack to patch.">
+<meta name="theme-color" content="#f3eee3">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Storage — Arkane OS">
+<meta property="og:description" content="No filesystem tower: the kernel multiplexes one block device, everything else — hash-addressed blobs, WAL, encryption — lives in cells. One audited virtio-blk driver instead of a storage stack to patch.">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%239db89a' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23e8927c'/%3E%3C/svg%3E">
+<script>
+  document.documentElement.classList.add('js');
+  (function () {
+    let t = null;
+    try { t = localStorage.getItem('arkane_theme'); } catch (e) {}
+    if (!t) t = 'light';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav id="topnav" aria-label="Main">
+  <a class="nav-brand" href="index.html">arkane<span class="dot-k">.</span></a>
+  <div class="nav-tabs">
+      <a href="index.html">Overview</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="storage.html" aria-current="page">Storage</a>
+      <a href="console.html">Console</a>
+      <a href="proof.html">Proof</a>
+      <a href="roadmap.html">Roadmap</a>
+      <a href="getit.html">Get it</a>
+  </div>
+  <button id="theme-btn" type="button" aria-label="Switch theme">◐ dark</button>
+</nav>
+
+<main>
+
+<div class="page-head">
+  <div class="ch-inner narrow">
+    <div class="ch-no">Storage</div>
+    <h2>Identity is content.</h2>
+    <p class="prose">Arkane has no filesystem — on purpose. The kernel multiplexes
+    exactly <b>one block device</b>, minimally. Format, caching, durability and
+    policy live in <b>cells that own their own memory</b>. Everything durable is
+    <b>content-addressed</b>: a blob's name is the Blake3 hash of its bytes, so
+    dedup, snapshots, versioning and integrity proof fall out of the design
+    instead of being bolted on.</p>
+  </div>
+</div>
+
+<!-- ============ NO TOWER ============ -->
+<section class="chapter" id="tower">
+  <div class="spawn-strip" data-cell="tower"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">01 · No filesystem tower</div>
+    <h2>The tower Linux built — and what replaces it.</h2>
+    <p class="prose">On Linux, every write climbs a tower the kernel owns:
+    VFS, page cache, filesystem, block layer — one shared stack for every
+    workload, cached twice when a database brings its own buffer pool.
+    Arkane inverts this: the kernel touches only the bottom sector layer,
+    and each level above is a userspace cell holding its frames directly.</p>
+    <div class="term-frame">
+      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">storage · linux tower vs. arkane layering</span></div>
+      <pre class="mono term-body" style="min-height:0"><span class="dim">      Linux (kernel owns it all)        Arkane (cells own it)</span>
+      ┌────────────────────┐         3  zero-copy distribution
+      │  app / database    │            <span class="p">SYS_CELL_MAP_BLOB — ro, cap-gated</span>
+      ├────────────────────┤                 ▲
+      │  VFS               │         2  structured stores <span class="dim">(service cells)</span>
+      ├────────────────────┤            <span class="p">WAL · cluster state · journals</span>
+      │  page cache        │<span class="dim"> ← caches</span>       ▲
+      ├────────────────────┤<span class="dim">   twice</span>  1  content-addressed blob store <span class="dim">(cell)</span>
+      │  filesystem        │            <span class="p">blake3 blobs · refcount + GC · dedup</span>
+      ├────────────────────┤                 ▲
+      │  block layer       │         0  block device — <span class="p">one virtio-blk</span>
+      └────────────────────┘            ─────────────────────────────
+      <span class="dim">  one stack for all         kernel: multiplexes level 0, minimally.</span>
+      <span class="dim">                            everything above is userspace.</span></pre>
+    </div>
+    <p class="caption">No double caching: the cell that owns the data owns its
+    frames — there is no OS page cache underneath re-caching the same blocks.
+    That is the structural claim; the <b>speed</b> claim waits for the
+    <a href="roadmap.html" style="color:var(--sage)">benchmark</a>.</p>
+  </div>
+</section>
+
+<!-- ============ BLOBS + WAL ============ -->
+<section class="chapter" id="blobs">
+  <div class="spawn-strip" data-cell="blobs"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">02 · Blobs &amp; the log</div>
+    <h2>Hash-addressed, owned by cells.</h2>
+    <p class="prose">The durable core is a <b>content-addressed blob store</b> run
+    by the persistence cell — not by the kernel. A blob's identity <em>is</em> its
+    Blake3 hash: identical content stores once, every revision is verifiable, and
+    a model or snapshot maps <b>read-only into N consumer cells at zero copies</b> —
+    cap-gated and content-verified at the reader. On top sits a
+    <b>Blake3-chained write-ahead log</b>: <span class="mono">apply → reboot →
+    state intact</span>, demonstrated end-to-end. The kernel keeps only a tiny
+    durable root pointer; store, format and distribution are cells all the way up.</p>
+    <p class="caption">Because identity is content, audit works <b>on the data
+    level</b>: what was stored, when, and that it never changed is
+    cryptographically checkable — not reconstructed from logs after the fact.</p>
+  </div>
+</section>
+
+<!-- ============ ENCRYPTION ============ -->
+<section class="chapter" id="atrest">
+  <div class="spawn-strip" data-cell="atrest"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">03 · At rest</div>
+    <h2>Keys the app never holds.</h2>
+    <p class="prose">Encryption at rest is layered, and we say by which layer.
+    The <b>baseline</b> comes from your infrastructure: run Arkane as a VM on an
+    encrypted array (FlashSystem, LUKS, encrypted LUNs) and its sectors land
+    encrypted — from storage you already certified. On top, Arkane seals sensitive
+    stores <b>at the application layer</b>: bodies are encrypted in the storage path
+    with per-scope data keys, wrapped by a <b>net-free keystore cell</b> whose key
+    encryption key lives in RAM only and never touches disk. Manifests reference
+    secrets by name — <b>value-free</b>: neither the operator nor the app ever sees
+    the plaintext key material.</p>
+    <div class="contract mono">
+      <div class="ct-head">keystore cell · signed ed25519 ✓</div>
+      <pre><span class="m">KEK</span>  ram-only, never on disk
+<span class="m">DEK</span>  per scope, stored only KEK-wrapped
+<span class="r">forbid(net::inbound, net::outbound)</span>  <span class="m"># structurally net-free</span></pre>
+    </div>
+    <p class="caption">Sealing today covers selected stores, not every byte — the
+    audit chain is deliberately plaintext, and per-tenant sealing-by-default is the
+    build-out. We will not say "encrypted" without saying by what.</p>
+  </div>
+</section>
+
+<!-- ============ ONE DRIVER ============ -->
+<section class="chapter" id="driver">
+  <div class="spawn-strip" data-cell="driver"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">04 · One driver</div>
+    <h2>One driver, not a zoo.</h2>
+    <p class="prose">Arkane needs no storage-driver menagerie. It runs as a guest
+    and sees <b>one virtio-blk device</b> — a single, tiny, audited driver.
+    Whatever sits underneath is your hypervisor's job: FlashSystem or local NVMe,
+    NAS-backed images, SAN LUNs, Ceph. The blob store sees sectors, not NVMe
+    queues or NFS RPCs. Your storage stays yours — redundancy, replication and
+    snapshots come from infrastructure you already run and certify, and Arkane
+    ships <b>no storage stack to patch</b>. VM-first is the deliberate choice,
+    not a limitation.</p>
+    <p class="caption">Bare metal moves the real driver (NVMe, network storage)
+    into contracted <b>driver cells</b> — consistent with the model, but that is
+    <a href="roadmap.html" style="color:var(--sage)">roadmap</a>, not today.</p>
+  </div>
+</section>
+
+<!-- ============ LIMITS ============ -->
+<section class="chapter" id="limits">
+  <div class="spawn-strip" data-cell="limits"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">05 · Honest limits</div>
+    <h2>What is not there today.</h2>
+    <div class="contract mono">
+      <div class="ct-head">storage · named non-features, not fine print</div>
+      <pre><span class="r">not yet</span>  performance numbers — the structure avoids Linux's costs,
+         <span class="dim">but "faster" is claimed only after the benchmark</span>
+<span class="r">not yet</span>  bare-metal drivers (NVMe / NAS-native) — <span class="dim">until then: VM + virtio-blk</span>
+<span class="r">not yet</span>  multi-host replication — <span class="dim">single-host durability is solid,
+         distribution is the hardest open problem on the roadmap</span>
+<span class="r">bounded</span>  blobs cap at 256 MiB; large models need more RAM (and GPUs, later) —
+         <span class="dim">CPU + mid-sized models is the honest v1 reality</span></pre>
+    </div>
+    <p class="caption">Everything above the line is running and gated in QEMU —
+    <a href="proof.html" style="color:var(--sage)">the proof page shows how</a>.</p>
+  </div>
+</section>
+
+</main>
+
+<footer id="coda">
+  <p class="coda-line">What does not exist<br><em>cannot break.</em></p>
+  <div class="colophon"><a href="https://github.com/arkane-studio/arkane-os">github</a> &nbsp;·&nbsp; arkane@2026</div>
+</footer>
+
+<script src="cells.js"></script>
+<script src="site.js"></script>
+</body>
+</html>

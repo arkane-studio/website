@@ -32,6 +32,7 @@
   <div class="nav-tabs">
       <a href="index.html">Overview</a>
       <a href="architecture.html" aria-current="page">Architecture</a>
+      <a href="storage.html">Storage</a>
       <a href="console.html">Console</a>
       <a href="proof.html">Proof</a>
       <a href="roadmap.html">Roadmap</a>
@@ -152,6 +153,21 @@
     a <b>replica group</b>: the gateways route requests round-robin across its members, and
     <span class="mono">arkctl cell rollout</span> restarts them one at a time — the group never
     hits zero. <a href="proof.html" style="color:var(--sage)">Proven under sustained fire →</a></p>
+  </div>
+</section>
+
+<!-- ============ STORAGE TEASER ============ -->
+<section class="chapter" id="storage-teaser">
+  <div class="spawn-strip" data-cell="storage-teaser"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">04 · Storage</div>
+    <h2>No filesystem. On purpose.</h2>
+    <p class="prose">The kernel multiplexes <b>one block device</b> — there is no
+    VFS, no page cache, no filesystem tower. Everything durable is a
+    <b>hash-addressed blob owned by a cell</b>: dedup, snapshots and integrity
+    proof fall out of the design, and encryption at rest runs through a net-free
+    keystore cell. One tiny audited driver instead of a storage stack to patch.</p>
+    <p class="caption"><a href="storage.html" style="color:var(--sage)">The full storage story →</a></p>
   </div>
 </section>
 
