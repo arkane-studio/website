@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get it — Arkane OS</title>
+<meta name="description" content="From clone to running system: make image builds the whole OS as one signed artifact, arkctl image verify checks the receipt offline, qemu-run.sh boots exactly what was verified.">
+<meta name="theme-color" content="#f3eee3">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Get it — Arkane OS">
+<meta property="og:description" content="From clone to running system: make image builds the whole OS as one signed artifact, arkctl image verify checks the receipt offline, qemu-run.sh boots exactly what was verified.">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%239db89a' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23e8927c'/%3E%3C/svg%3E">
+<script>
+  document.documentElement.classList.add('js');
+  (function () {
+    let t = null;
+    try { t = localStorage.getItem('arkane_theme'); } catch (e) {}
+    if (!t) t = 'light';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav id="topnav" aria-label="Main">
+  <a class="nav-brand" href="index.html">arkane<span class="dot-k">.</span></a>
+  <div class="nav-tabs">
+      <a href="index.html">Overview</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="console.html">Console</a>
+      <a href="proof.html">Proof</a>
+      <a href="roadmap.html">Roadmap</a>
+      <a href="getit.html" aria-current="page">Get it</a>
+  </div>
+  <button id="theme-btn" type="button" aria-label="Switch theme">◐ dark</button>
+</nav>
+
+<main>
+
+<div class="page-head">
+  <div class="ch-inner narrow">
+    <div class="ch-no">Get it</div>
+    <h2>Three commands, and it runs.</h2>
+    <p class="prose">The whole OS builds as <b>one signed artifact</b>:
+    <span class="mono">make image</span> produces the kernel, the baked-in cells —
+    each individually signed — and a manifest naming every hash, signed as one
+    Ed25519 unit. <span class="mono">arkctl image verify</span> checks that receipt
+    offline; the bundled <span class="mono">qemu-run.sh</span> boots exactly what
+    was verified. No installer, no download portal — a repository and a receipt.</p>
+  </div>
+</div>
+
+<section class="chapter" id="getit">
+  <div class="spawn-strip" data-cell="getit"></div>
+  <div class="ch-inner narrow">
+    <div class="term-frame">
+      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">arkane-os · from clone to running system</span></div>
+      <pre class="mono term-body" id="getit-body"></pre>
+    </div>
+    <p class="prose">Installing an app is the same trust decision the kernel makes
+    at spawn: a bundle is one content-addressed unit — manifest plus signed cell
+    image — and <span class="mono">arkctl app install</span> verifies it against the
+    root-signed whitelist, <b>refusing before any network is touched</b>. Your own
+    cell starts as <span class="mono">arkctl new</span>: one crate
+    (<span class="mono">arkane-sdk</span>), a signed contract,
+    <span class="mono">arkctl bundle pack</span>.</p>
+    <p class="caption">The honest edges: the image targets QEMU — bare metal is a
+    named trigger, not a promise. A fresh checkout generates its own key material;
+    the chain — root → whitelist → per-image signature — is real, but <b>you are
+    its root</b>. CI builds these same signed artifacts on every push to main.</p>
+  </div>
+</section>
+
+</main>
+
+<footer id="coda">
+  <p class="coda-line">What does not exist<br><em>cannot break.</em></p>
+  <div class="colophon"><a href="https://github.com/arkane-studio/arkane-os">github</a> &nbsp;·&nbsp; arkane@2026</div>
+</footer>
+
+<script src="cells.js"></script>
+<script src="site.js"></script>
+<script>
+(function () {
+  'use strict';
+  const GETIT_SCRIPT = [
+    { t: 'cmd', s: 'git clone https://github.com/arkane-studio/arkane-os && cd arkane-os && make image' },
+    { t: 'pause', ms: 300 },
+    { t: 'out', s: '<span class="dim">==> make image: v0.22 → dist-image/arkane-os-v0.22</span>' },
+    { t: 'out', s: '<span class="dim">built OS image · kernel + baked cells + manifest, signed ed25519</span>' },
+    { t: 'cmd', s: 'arkctl image verify dist-image/arkane-os-v0.22' },
+    { t: 'out', s: 'OK  dist-image/arkane-os-v0.22\n<span class="dim">  signer          f778… </span><span class="route">(whitelisted)</span><span class="dim">\n  kernel blake3   f062…</span>' },
+    { t: 'cmd', s: 'dist-image/arkane-os-v0.22/qemu-run.sh' },
+    { t: 'out', s: '[7.4s] cluster converged · unattended\n<span class="dim">gw-admin :9000 mTLS · console :9443 · chat :8081 · mcp :8082</span>' },
+    { t: 'pause', ms: 350 },
+    { t: 'cmd', s: 'arkctl app install spin' },
+    { t: 'out', s: '<span class="dim">installing \'spin\' from apps/spin.arkbundle (content-address 51c9…)</span>\nApply ok: 2 ops completed' },
+    { t: 'cmd', s: 'arkctl app install shady-vendor.arkbundle' },
+    { t: 'out', s: '<span class="deny">bundle verify failed (refusing to install): SignerNotAllowed</span>' },
+    { t: 'pause', ms: 400 },
+    { t: 'cmd', s: 'arkctl cell rollout inference' },
+    { t: 'out', s: '<span class="route">rollout: 2 replicas · one at a time · ready-gated</span>\n<span class="dim">replaced 2/2 · group never below 1 · DONE</span>' },
+    { t: 'ans', s: 'The update ran. Nobody noticed. That is the point.' },
+  ];
+  ArkaneSite.armTerm('#getit-body', GETIT_SCRIPT);
+})();
+</script>
+</body>
+</html>

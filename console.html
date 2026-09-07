@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACP Console — Arkane OS</title>
+<meta name="description" content="The v0.22 ACP Console: browser login with Argon2id in a net-free auth cell, RBAC and CSRF on every write, cell lifecycle with replica groups, topology view, manifest deploy with diff preview, and a value-free secrets inventory.">
+<meta name="theme-color" content="#f3eee3">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ACP Console — Arkane OS">
+<meta property="og:description" content="The v0.22 ACP Console: browser login with Argon2id in a net-free auth cell, RBAC and CSRF on every write, cell lifecycle with replica groups, topology view, manifest deploy with diff preview, and a value-free secrets inventory.">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%239db89a' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23e8927c'/%3E%3C/svg%3E">
+<script>
+  document.documentElement.classList.add('js');
+  (function () {
+    let t = null;
+    try { t = localStorage.getItem('arkane_theme'); } catch (e) {}
+    if (!t) t = 'light';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav id="topnav" aria-label="Main">
+  <a class="nav-brand" href="index.html">arkane<span class="dot-k">.</span></a>
+  <div class="nav-tabs">
+      <a href="index.html">Overview</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="console.html" aria-current="page">Console</a>
+      <a href="proof.html">Proof</a>
+      <a href="roadmap.html">Roadmap</a>
+      <a href="getit.html">Get it</a>
+  </div>
+  <button id="theme-btn" type="button" aria-label="Switch theme">◐ dark</button>
+</nav>
+
+<main>
+
+<div class="page-head">
+  <div class="ch-inner">
+    <div class="ch-no">ACP Console · v0.22</div>
+    <h2>The whole cluster, one browser tab.</h2>
+    <p class="prose">The Arkane Control Plane Console is served by
+    <b>gw-admin itself</b> — no agent, no sidecar, no external stack. Login is TLS
+    on <span class="mono">:9443</span>; the password is checked by Argon2id inside a
+    <b>net-free auth cell</b>, and the session is an HttpOnly, Secure,
+    SameSite=Strict cookie carrying one of three roles: <b>viewer, operator,
+    admin</b>. Every write runs the same order — CSRF token, server-side role
+    check, <b>audit entry first</b> — before anything happens.</p>
+  </div>
+</div>
+
+<!-- ============ TABS ============ -->
+<section class="chapter" id="tabs">
+  <div class="spawn-strip" data-cell="console"></div>
+  <div class="ch-inner">
+    <div class="ch-no">01 · Five tabs</div>
+    <h2>Overview, cells, topology, deploy, secrets.</h2>
+    <p class="prose"><b>Overview</b> greets you with the cluster at a glance.
+    <b>Cells</b> lists every cell — system cells badged apart from apps, replica
+    groups collapsed into one row with an honest aggregate status and a rollout
+    button. <b>Topology</b> draws the cluster as a band, with the
+    net-outbound line making visible which cells can even reach the network.
+    <b>Deploy</b> and <b>Secrets</b> are below.</p>
+    <div class="term-frame">
+      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">acp console · https://arkane:9443 · cells</span></div>
+      <pre class="mono term-body" style="min-height:0">
+<span class="dim">overview │ <span class="route">cells</span> │ topology │ deploy │ secrets                    admin@arkane</span>
+
+ <span class="p">●</span> gw-admin      <span class="dim">[system]</span>  running   <span class="dim">control plane · healer</span>
+ <span class="p">●</span> gw-public     <span class="dim">[system]</span>  running   <span class="dim">reachable: 2 of 2</span>
+ <span class="p">●</span> keystore      <span class="dim">[system]</span>  running   <span class="dim">net-free</span>
+ <span class="p">●</span> inference ×2  <span class="dim">[app]</span>     running   <span class="dim">replica group</span>   <span class="route">[ rollout ]</span>
+ <span class="p">●</span> persistence   <span class="dim">[system]</span>  running   <span class="dim">WAL mirrored</span>
+
+<span class="dim">logs ▹ drawer · every write: CSRF → RBAC → audit-first</span></pre>
+    </div>
+    <p class="caption">A rollout from this button is the same code path as
+    <span class="mono">arkctl cell rollout</span> — one replica at a time, ready-gated,
+    the group never at zero.</p>
+  </div>
+</section>
+
+<!-- ============ DEPLOY ============ -->
+<section class="chapter" id="deploy">
+  <div class="spawn-strip" data-cell="deploy"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">02 · Deploy</div>
+    <h2>Diff first, apply second.</h2>
+    <p class="prose">Paste a manifest and the console shows you a <b>diff preview
+    that mutates nothing</b> — what would spawn, what would change. Invalid input
+    is refused with a readable reason, fail-closed; manifests that grant
+    capabilities are deliberately rejected here and belong to
+    <span class="mono">arkctl apply</span>. Only then: apply — CSRF-gated,
+    role-checked (operator or admin), hash-chain audited before the first spawn.</p>
+    <div class="contract">
+      <div class="ct-head mono">deploy · diff preview</div>
+      <pre><span class="m">+ spawn</span>  inference ×2   <span class="dim">image blake3:9c41… · replica group</span>
+<span class="m">~ update</span> tool-echo      <span class="dim">heap 8192 → 16384 KiB</span>
+<span class="dim">2 ops · nothing applied yet</span>
+
+<span class="r">✗ refused:</span> manifest grants capabilities — use arkctl apply <span class="dim">(fail-closed by design)</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECRETS & RBAC ============ -->
+<section class="chapter" id="secrets">
+  <div class="spawn-strip" data-cell="secrets"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">03 · Secrets &amp; audit</div>
+    <h2>An inventory that cannot leak.</h2>
+    <p class="prose">The secrets tab lists <b>names and grants — structurally never
+    a value</b>. There is no reveal button to forget to disable: the API that
+    serves the tab has no code path that returns a secret's bytes. Reading the
+    inventory at all is admin-only.</p>
+    <p class="prose">Everything else is accounted for the same way: five failed
+    logins return <span class="mono">429</span>, and every accepted write becomes a
+    block in the <b>Blake3 audit chain</b>, tied to the acting user's digest.
+    The console is a client of the same RPCs arkctl speaks — no privileged side
+    door.</p>
+    <div class="contract">
+      <div class="ct-head mono">secrets · admin view</div>
+      <pre>db-password      <span class="dim">granted →</span> persistence
+api-token        <span class="dim">granted →</span> gw-mcp
+<span class="dim">values: not retrievable — the endpoint does not exist</span></pre>
+    </div>
+    <p class="caption">Where credentials actually live: a net-free keystore cell,
+    key material RAM-only, injected per call by the gateway — the app never holds
+    them. <a href="proof.html" style="color:var(--sage)">The audit chain, verified offline →</a></p>
+  </div>
+</section>
+
+</main>
+
+<footer id="coda">
+  <p class="coda-line">What does not exist<br><em>cannot break.</em></p>
+  <div class="colophon"><a href="https://github.com/arkane-studio/arkane-os">github</a> &nbsp;·&nbsp; arkane@2026</div>
+</footer>
+
+<script src="cells.js"></script>
+<script src="site.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture — Arkane OS</title>
+<meta name="description" content="Exokernel, cells, gateways, contracts, capabilities: a ~13,000-line Rust kernel with 26 syscalls; everything else runs in hardware-isolated cells with signed contracts and manifest-granted capabilities.">
+<meta name="theme-color" content="#f3eee3">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Architecture — Arkane OS">
+<meta property="og:description" content="Exokernel, cells, gateways, contracts, capabilities: a ~13,000-line Rust kernel with 26 syscalls; everything else runs in hardware-isolated cells with signed contracts and manifest-granted capabilities.">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%239db89a' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23e8927c'/%3E%3C/svg%3E">
+<script>
+  document.documentElement.classList.add('js');
+  (function () {
+    let t = null;
+    try { t = localStorage.getItem('arkane_theme'); } catch (e) {}
+    if (!t) t = 'light';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav id="topnav" aria-label="Main">
+  <a class="nav-brand" href="index.html">arkane<span class="dot-k">.</span></a>
+  <div class="nav-tabs">
+      <a href="index.html">Overview</a>
+      <a href="architecture.html" aria-current="page">Architecture</a>
+      <a href="console.html">Console</a>
+      <a href="proof.html">Proof</a>
+      <a href="roadmap.html">Roadmap</a>
+      <a href="getit.html">Get it</a>
+  </div>
+  <button id="theme-btn" type="button" aria-label="Switch theme">◐ dark</button>
+</nav>
+
+<main>
+
+<div class="page-head">
+  <div class="ch-inner">
+    <div class="ch-no">Architecture</div>
+    <h2>What does not exist cannot be exploited.</h2>
+    <p class="prose">Arkane starts from <em>nothing</em> and only adds what can be
+    proven. The kernel is an <b>exokernel</b>: capability check, memory mapping,
+    IRQ routing, IPC — about 13,000 lines of Rust, 26 syscalls, no drivers, no
+    network stack, no policy. Everything else — network, storage, the AI model,
+    your app — runs in <b>hardware-isolated cells</b> with their own page tables.
+    Isolation is wired into the MMU <b>once, at spawn</b> — not checked on every
+    operation.</p>
+    <div class="numerals">
+      <div class="nume"><span class="n">26</span><span class="l">syscalls,<br>the entire API</span></div>
+      <div class="nume"><span class="n">~13k</span><span class="l">lines of Rust,<br>the whole kernel</span></div>
+      <div class="nume"><span class="n">0</span><span class="l">lines of C.<br>POSIX. shell.</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ANATOMY ============ -->
+<section class="chapter" id="anatomy">
+  <div class="spawn-strip" data-cell="anatomy"></div>
+  <div class="ch-inner">
+    <div class="ch-no">01 · Anatomy</div>
+    <h2>What it is made of.</h2>
+    <p class="prose">Every box is a real binary in the repository — no marketing
+    architecture. <b>Click a component.</b></p>
+    <div class="arch">
+      <div class="arch-stack" id="arch-stack">
+        <div class="arch-row entry">
+          <button class="node" data-k="arkctl" type="button">arkctl<small>operator CLI</small></button>
+          <div class="arch-flow">mTLS · HTTP/2 · gRPC →</div>
+        </div>
+        <div class="arch-label">gateway cells</div>
+        <div class="arch-row g3">
+          <button class="node" data-k="gwadmin" type="button">gw-admin<small>control plane · ACP healer · console</small></button>
+          <button class="node" data-k="gwpublic" type="button">gw-public<small>chat API · round-robin routing</small></button>
+          <button class="node" data-k="gwmcp" type="button">gw-mcp<small>MCP tool host</small></button>
+        </div>
+        <div class="arch-flow">↓ capability-mediated IPC ↓</div>
+        <div class="arch-label">workload cells — replicas: N per group</div>
+        <div class="arch-row g3">
+          <button class="node" data-k="inference" type="button">inference ×N<small>weights mapped read-only</small></button>
+          <button class="node" data-k="storage" type="button">persistence<small>durable state · WAL</small></button>
+          <button class="node" data-k="tools" type="button">tool cells<small>isolated MCP tools</small></button>
+        </div>
+        <div class="arch-flow">↓ 26 syscalls — every one a capability check ↓</div>
+        <button class="node" data-k="kernel" type="button">exokernel<small>capability check · memory mapping · IRQ routing · IPC — nothing else</small></button>
+        <button class="node" data-k="hw" type="button">hardware<small>virtio-net · virtio-blk · MSI-X · IOMMU (planned)</small></button>
+      </div>
+      <div class="arch-info" id="arch-info">
+        <h3>// select a component</h3>
+        <p>Everything shown here runs today — spawned, signed and isolated
+        on the real kernel, preemptively scheduled across four cores.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LAW ============ -->
+<section class="chapter" id="law">
+  <div class="spawn-strip" data-cell="law"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">02 · Contracts</div>
+    <h2>Two keys, one law.</h2>
+    <p class="prose">The developer signs the <b>shape</b> of a cell into its binary.
+    The operator provides the <b>values</b> in the manifest. The kernel enforces both —
+    structurally, default-deny, at every spawn. Access exists only as a
+    <b>capability</b>: an unforgeable token, derivable and transitively revocable.</p>
+    <div class="contract mono">
+      <div class="ct-head">cells/inference · signed ed25519 ✓</div>
+      <pre><span class="m">#[arkane_contract(</span>
+    needs(memory = "16MB"),
+    needs(share::read = "model"),
+    <span class="r">forbid(net::inbound, net::outbound, spawn)</span>
+<span class="m">)]</span></pre>
+    </div>
+    <p class="caption">What is forbidden here is not monitored — it is <b>never wired up</b>.</p>
+  </div>
+</section>
+
+<!-- ============ CAGE ============ -->
+<section class="chapter" id="cage">
+  <div class="spawn-strip" data-cell="cage"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">03 · Gateways</div>
+    <h2>The AI that cannot phone home.</h2>
+    <p class="prose">Network cards exist only in the gateway cells — every byte in
+    or out crosses one of exactly three audited membranes. The inference cell
+    holds no network capability, so the kernel never wires one up: there is
+    nothing to block, monitor, or misconfigure. <b>The path does not exist.</b></p>
+    <div class="contract">
+      <div class="ct-head mono">manifest.yaml · cell: inference</div>
+      <pre><span class="m">arkane:</span> v1
+<span class="m">kind:</span> Cell
+<span class="m">metadata:</span>
+  name: inference
+<span class="m">spec:</span>
+  image: prod.images.inference@blake3:9c41…   <span class="r"># signed — contract forbids net</span>
+  ha: { replicas: 2 }                          <span class="m"># a replica group — rolling restarts</span>
+  shares:
+    model: blake3:7c8a…                        <span class="r"># weights, mapped read-only</span>
+  capabilities: []
+  <span class="r"># no mmio, no port, no endpoint —
+  # a path to a network card is never created</span></pre>
+    </div>
+    <p class="caption">Since the HA slice, <span class="mono">replicas: N</span> turns a cell into
+    a <b>replica group</b>: the gateways route requests round-robin across its members, and
+    <span class="mono">arkctl cell rollout</span> restarts them one at a time — the group never
+    hits zero. <a href="proof.html" style="color:var(--sage)">Proven under sustained fire →</a></p>
+  </div>
+</section>
+
+</main>
+
+<footer id="coda">
+  <p class="coda-line">What does not exist<br><em>cannot break.</em></p>
+  <div class="colophon"><a href="https://github.com/arkane-studio/arkane-os">github</a> &nbsp;·&nbsp; arkane@2026</div>
+</footer>
+
+<script src="cells.js"></script>
+<script src="site.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = ArkaneSite.$;
+  const info = $('#arch-info');
+  const nodes = document.querySelectorAll('#arch-stack .node');
+  const TEXTS = {
+    arkctl: ['// arkctl — operator CLI',
+      'One static binary. <span class="mono">validate · lint · render · diff · hash</span> offline; <span class="mono">apply</span> over mTLS + HTTP/2 + gRPC; <span class="mono">keys</span> manages the signer lifecycle. It is also the app lifecycle: <span class="mono">bundle pack · app install · image build · image verify</span> — signed bundles in, a signed OS image out. Since the HA slice: <span class="mono">cell rollout</span>, a rolling restart of a replica group that never lets it hit zero.',
+      'Manifests are YAML, fuzzed with 1M+ adversarial inputs. The manifest fingerprint you compute locally round-trips with what the control plane saw — you can prove which state was applied.'],
+    gwadmin: ['// gw-admin — control plane & ACP healer',
+      'The control plane is not a kernel service — it is a cell like any other, with no special power beyond an Authority capability. It terminates mTLS, speaks HTTP/2 + gRPC, diffs desired vs. observed state and drives spawn / map / start. It also serves the <a href="console.html" style="color:var(--sage)">ACP Console</a> on :9443.',
+      'The same cell is the <b>ACP healer</b>: it probes cell status, detects drift and respawns dead cells from their signed images. The healer itself is watched by a tiny <b>supervisor cell</b> that replays its signed boot recipe if it dies. If gw-admin is ever compromised, the kernel contract check still bounds it — it cannot grant anything the target image does not declare.'],
+    gwpublic: ['// gw-public — human-facing gateway',
+      'The OpenAI-compatible endpoint (<span class="mono">/v1/chat/completions</span>) and the web apps as one cell. Network cards exist only in the gateways, so every byte of traffic crosses an audited membrane; workloads are never reachable directly.',
+      'Since the LB slice it routes requests <b>round-robin across replica groups</b> — during a rolling restart, traffic simply flows to whichever replica is alive. Measured: 3 rollouts under sustained fire, 802 requests, 0 errors.'],
+    gwmcp: ['// gw-mcp — MCP tool host',
+      'One MCP endpoint for agents; the tools behind it run in contracted cells, discovered live instead of from a static registry. A tool that tries to exfiltrate hits <span class="mono">SYS_ERR_RIGHTS</span>, dies alone, leaves an audit trail — and the agent keeps running.'],
+    inference: ['// inference cells — a replica group',
+      'A real language model on its own <span class="mono">no_std</span> engine, token-identical to the reference implementation. The weights are a content-addressed, read-only mapping shared across replicas — RAM dedup for free.',
+      'Declare <span class="mono">ha: { replicas: 2 }</span> and the control plane keeps two alive; the QEMU acceptance gate proves the group never drops to zero during a rollout. The cells hold no network capability — they can read their weights and answer over the gateway, structurally nothing else.'],
+    storage: ['// persistence cell',
+      'Durability lives in userspace: this cell mirrors the control-plane state and the Blake3-chained write-ahead log to its own virtio-blk disk and re-warms the kernel blob table after a reboot. <span class="mono">apply → reboot → state intact</span>, no re-apply — demonstrated end-to-end.'],
+    tools: ['// tool cells',
+      'Tools run in hardware-isolated cells with their own signed contracts. Tool cells cannot see each other, cannot see the model, cannot see the network — they see exactly the IPC channel gw-mcp granted them.'],
+    kernel: ['// exokernel',
+      'Capability check, memory mapping, IRQ routing, IPC — and a preemptive scheduler: time slices per cell, four cores, each cell statically partitioned onto exactly one. Nothing else — no drivers (one narrow, written-down exception: the durable root table), no network stack, no policy. About 13,000 lines of Rust.',
+      'A core can even be owned <b>exclusively</b> — declared in the signed contract, granted in the manifest, enforced at spawn: no other cell ever enters it. Because everything that changes lives in cells, the kernel almost never needs an update — and a dead network stack is a cell respawn, not a reboot.'],
+    hw: ['// hardware',
+      'virtio-net and virtio-blk are driven from cells via MSI-X — no interrupt storms, no drivers in the kernel. IOMMU for DMA protection and TPM-anchored trust are a named hardware milestone, required before 1.0. Today the target is QEMU; bare metal is a trigger, not a promise.'],
+  };
+  nodes.forEach(n => n.addEventListener('click', () => {
+    nodes.forEach(m => m.classList.remove('sel'));
+    n.classList.add('sel');
+    const t = TEXTS[n.dataset.k];
+    info.innerHTML = '<h3>' + t[0] + '</h3>' + t.slice(1).map(p => '<p>' + p + '</p>').join('');
+  }));
+})();
+</script>
+</body>
+</html>

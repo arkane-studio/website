@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proof — Arkane OS</title>
+<meta name="description" content="Every feature is proven by a QEMU acceptance gate before merge: 3 rolling updates under sustained fire with 802 requests and 0 errors, 7.4 s unattended boot, an offline-verifiable Blake3 audit chain, and encryption at rest you can check with strings(1).">
+<meta name="theme-color" content="#f3eee3">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Proof — Arkane OS">
+<meta property="og:description" content="Every feature is proven by a QEMU acceptance gate before merge: 3 rolling updates under sustained fire with 802 requests and 0 errors, 7.4 s unattended boot, an offline-verifiable Blake3 audit chain, and encryption at rest you can check with strings(1).">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%239db89a' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23e8927c'/%3E%3C/svg%3E">
+<script>
+  document.documentElement.classList.add('js');
+  (function () {
+    let t = null;
+    try { t = localStorage.getItem('arkane_theme'); } catch (e) {}
+    if (!t) t = 'light';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav id="topnav" aria-label="Main">
+  <a class="nav-brand" href="index.html">arkane<span class="dot-k">.</span></a>
+  <div class="nav-tabs">
+      <a href="index.html">Overview</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="console.html">Console</a>
+      <a href="proof.html" aria-current="page">Proof</a>
+      <a href="roadmap.html">Roadmap</a>
+      <a href="getit.html">Get it</a>
+  </div>
+  <button id="theme-btn" type="button" aria-label="Switch theme">◐ dark</button>
+</nav>
+
+<main>
+
+<div class="page-head">
+  <div class="ch-inner">
+    <div class="ch-no">Proof</div>
+    <h2>Every claim has a gate.</h2>
+    <p class="prose">Arkane is built on a proof culture: <b>no feature merges
+    without an acceptance gate</b> — a script that boots the real system in QEMU,
+    exercises the feature end-to-end, and greps the serial log for the exact
+    markers that prove it happened. 47+ gates run on every release. What follows
+    are the headline measurements and how they were taken.</p>
+  </div>
+</div>
+
+<!-- ============ ZERO DOWNTIME ============ -->
+<section class="chapter" id="zerodowntime">
+  <div class="spawn-strip" data-cell="rollout"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">01 · Zero-downtime update</div>
+    <h2>802 requests. 0 errors. During the update.</h2>
+    <p class="prose">The gate keeps a client firing requests at the inference
+    replica group <b>while</b> <span class="mono">arkctl cell rollout</span> restarts
+    it — three times in a row. The gateway routes round-robin to whichever
+    replica is alive; the rollout is ready-gated so the group never drops to
+    zero. Result across three rollouts under sustained fire:
+    <b>802 requests, 0 failed responses.</b></p>
+    <div class="term-frame">
+      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">acceptance gate · rollout under fire</span></div>
+      <pre class="mono term-body" style="min-height:0">$ arkctl cell rollout inference   <span class="dim"># ×3, client firing throughout</span>
+<span class="dim">ROLLOUT_START · step 1: alive_before=2 · ready · step 2: alive_before=2 · ready · DONE</span>
+<span class="p">requests: 802 · errors: 0 · min alive: 1 (floor N−1)</span></pre>
+    </div>
+    <p class="caption">This is the availability claim made concrete: <b>updating an
+    app never takes it down.</b> The serial-log markers (START / STEP / READY / DONE,
+    never ABORT) are what the gate greps for — not a dashboard screenshot.</p>
+  </div>
+</section>
+
+<!-- ============ BOOT ============ -->
+<section class="chapter" id="bootlatency">
+  <div class="spawn-strip" data-cell="boot"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">02 · Boot latency</div>
+    <h2>Power-on to converged cluster: 7.4 s.</h2>
+    <p class="prose">Measured in QEMU under TCG, unattended — no request needed to
+    poke the system awake. The interesting part is what the gate found first:
+    the kernel was never slow, but one cell waited indefinitely for its first
+    network request, so an untouched boot never converged at all. The fix gave
+    it a time budget; the gate now enforces convergence <b>without any external
+    stimulus</b>. Boot under 3 s is a named optimization target, not yet claimed.</p>
+    <div class="contract">
+      <div class="ct-head mono">boot-trace · per-phase timing, on by default</div>
+      <pre>[0.0s]  kernel entry · 4 cores
+[2.1s]  cells spawned · signatures verified
+[6.8s]  TLS keys generated · console up
+<span class="m">[7.4s]  cluster converged · 0 drift · no poke</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============ AUDIT ============ -->
+<section class="chapter" id="audit">
+  <div class="spawn-strip" data-cell="audit"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">03 · Audit chain</div>
+    <h2>Prove what ran — offline.</h2>
+    <p class="prose">Every security-relevant event — spawn, stop, crash, capability
+    grant, contract refusal, every console write — becomes an immutable block in a
+    <b>Blake3 hash chain</b>, where each block's content hash <i>is</i> the next
+    block's back-link, mirrored to disk. Verification needs the drive, not the
+    running system.</p>
+    <div class="contract">
+      <div class="ct-head mono">arkctl audit · offline against the mirrored disk</div>
+      <pre>$ arkctl audit verify --store store.img --list
+<span class="m">audit chain OK: 23 blocks, head seq=22 hash=6b01c4…</span>
+
+$ printf '\x01' | dd of=store.img seek=571432 …   <span class="r"># flip ONE byte, anywhere</span>
+$ arkctl audit verify --store store.img
+<span class="r">audit verify FAILED: TAMPER: block seq=4 does not
+hash to its stored id (content was modified)</span></pre>
+    </div>
+    <p class="prose">The honest boundary, stated exactly: the chain proves tampering
+    and gaps <b>after its last verified anchor</b>. An attacker who controls the
+    kernel before the first anchor can rewrite the story up to that point —
+    external anchoring is on the roadmap, and until then this sentence is the
+    precise edge of the claim.</p>
+  </div>
+</section>
+
+<!-- ============ SEALED ============ -->
+<section class="chapter" id="sealed">
+  <div class="spawn-strip" data-cell="sealed"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">04 · Sealed at rest</div>
+    <h2>Nothing readable on the disk.</h2>
+    <p class="prose">Every app-data body is encrypted before it is mirrored —
+    XChaCha20-Poly1305 under a key that lives only in a <b>net-free keystore
+    cell</b>, RAM-only. The gate is a command anyone can run:
+    <span class="mono">strings store.img</span> after a full write round-trip finds
+    <b>no plaintext</b>. Flip one ciphertext byte and the read fails loudly — an
+    AEAD error, never silent garbage. And credentials are injected per call by
+    the gateway: <b>the app never holds them</b>, so a fully compromised app cannot
+    leak a secret it never had.</p>
+    <div class="contract">
+      <div class="ct-head mono">the headline gate · run it yourself</div>
+      <pre>$ strings store.img | grep -c "secret note body"
+<span class="m">0</span>   <span class="dim"># the data is on disk — as ciphertext</span></pre>
+    </div>
+    <p class="caption">Honest edge: <b>at rest means the disk.</b> The in-RAM blob
+    table holds plaintext while the machine runs — the same edge as "it runs in
+    QEMU". Crash recovery is proven the same way: apply → hard reboot → the
+    cluster is still there, without re-applying anything. That gate has run on
+    every merge since v0.14.</p>
+  </div>
+</section>
+
+</main>
+
+<footer id="coda">
+  <p class="coda-line">What does not exist<br><em>cannot break.</em></p>
+  <div class="colophon"><a href="https://github.com/arkane-studio/arkane-os">github</a> &nbsp;·&nbsp; arkane@2026</div>
+</footer>
+
+<script src="cells.js"></script>
+<script src="site.js"></script>
+
+</body>
+</html>

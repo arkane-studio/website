@@ -1,0 +1,1891 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arkane OS — a specialised operating system for security, stability and less overhead</title>
+<meta name="description" content="Arkane OS is a specialised operating system written in Rust, built for security, stability and less overhead. A ~13,000-line exokernel with 26 syscalls; everything else — network, storage, AI inference — runs in hardware-isolated cells.">
+<meta name="theme-color" content="#f3eee3">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Arkane OS — an operating system built from isolated cells">
+<meta property="og:description" content="A ~13,000-line Rust exokernel with 26 syscalls. Network, storage and AI inference run in hardware-isolated cells that update and heal like a server fleet.">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%239db89a' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23e8927c'/%3E%3C/svg%3E">
+<script>
+  document.documentElement.classList.add('js');
+  // theme before first paint: stored preference > light default
+  (function () {
+    let t = null;
+    try { t = localStorage.getItem('arkane_theme'); } catch (e) {}
+    if (!t) t = 'light';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+/* ================= themes ================= */
+:root {
+  --ink: #0d0c0a;
+  --ink-2: #12100d;
+  --bone: #ece7dd;
+  --muted: #a39d8f;
+  --faint: #85806f;
+  --hair: rgba(236,231,221,0.14);
+  --hair-soft: rgba(236,231,221,0.07);
+  --edge: rgba(236,231,221,0.30);
+  --sage: #9db89a;
+  --coral: #e8927c;
+  --ice: #a8c5d6;
+  --sand: #d6c08f;
+  --glass: rgba(13,12,10,0.5);
+  --serif: 'Fraunces', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* type scale — one ladder, used everywhere instead of ad-hoc px values */
+  --fs-lead: 20px;
+  --fs-body: 19px;
+  --fs-body-2: 17px;
+  --fs-note: 15px;
+  --fs-mono-lg: 14px;
+  --fs-mono: 12px;
+  --fs-mono-sm: 11px;
+  /* code blocks — one size, so the terminal and the contract card match */
+  --fs-code: clamp(11.5px, 2.9vw, 13.5px);
+
+  color-scheme: dark;
+}
+[data-theme="light"] {
+  --ink: #f3eee3;
+  --ink-2: #ebe5d6;
+  --bone: #241f17;
+  --muted: #514a3d;
+  --faint: #655e4c;
+  --hair: rgba(36,31,23,0.18);
+  --hair-soft: rgba(36,31,23,0.10);
+  --edge: rgba(36,31,23,0.42);
+  --sage: #4b6345;
+  --coral: #9a4527;
+  --ice: #426074;
+  --sand: #715c2d;
+  --glass: rgba(243,238,227,0.62);
+
+  color-scheme: light;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  background: var(--ink);
+  color: var(--bone);
+  font-family: var(--serif);
+  font-size: var(--fs-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  transition: background .5s ease, color .5s ease;
+}
+::selection { background: rgba(232,146,124,0.32); color: var(--bone); }
+[data-theme="light"] ::selection { background: rgba(154,69,39,0.22); color: var(--bone); }
+/* #boot and .term-frame are always dark — they must keep light selected text
+   in both themes, or the selection turns dark-on-dark in light mode */
+#boot ::selection, .term-frame ::selection { background: rgba(232,146,124,0.32); color: #ece7dd; }
+.mono { font-family: var(--mono); }
+b { font-weight: 600; }
+main { position: relative; z-index: 1; }
+
+/* every interactive control gets the same, always-visible focus ring.
+   no border-radius here — the outline already follows each control's own
+   corner radius, and setting one squares off the pill buttons on focus. */
+:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 3px;
+}
+.sr-only {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ================= plankton layer ================= */
+#plankton {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+}
+
+/* ================= boot overlay (always dark — it's a screen) ============ */
+#boot {
+  position: fixed; inset: 0; z-index: 1000;
+  background: #080706;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 72px max(24px, calc(50vw - 330px));
+  cursor: pointer;
+  overflow-y: auto;
+  transition: opacity .7s ease;
+}
+#boot.off { opacity: 0; pointer-events: none; }
+html:not(.js) #boot, html.booted #boot { display: none; }
+#boot-log {
+  font-family: var(--mono); font-size: clamp(11px, 3vw, 13px); line-height: 1.9;
+  color: #8f897c; white-space: pre-wrap; word-break: break-word;
+}
+#boot-log .ok { color: #9db89a; }
+#boot-log .hl { color: #ece7dd; }
+#boot-log .warn { color: #e8927c; }
+#boot-skip {
+  /* fixed, not absolute: #boot scrolls its log, and an absolute child
+     scrolls away with it on short viewports */
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  font-family: var(--mono); font-size: var(--fs-mono-sm); letter-spacing: .2em;
+  color: #807a6d; text-transform: uppercase;
+  background: none; border: 0; padding: 8px 14px; cursor: pointer;
+}
+#boot-skip:hover { color: #ece7dd; }
+
+/* ================= power-down overlay ================= */
+#powerdown {
+  position: fixed; inset: 0; z-index: 1100; background: #000;
+  opacity: 0; pointer-events: none;
+}
+#powerdown.on { opacity: 1; pointer-events: all; transition: opacity .12s; }
+#powerdown .pd-line {
+  position: absolute; left: 0; right: 0; top: 50%; height: 2px;
+  background: #fff; opacity: 0;
+}
+#powerdown.on .pd-line { animation: crtoff .5s ease-out forwards; }
+@keyframes crtoff {
+  0%   { opacity: .9; transform: scaleX(1);   }
+  60%  { opacity: .7; transform: scaleX(.4);  }
+  100% { opacity: 0;  transform: scaleX(.02); }
+}
+
+/* ================= HUD ================= */
+#hud {
+  position: fixed; left: 22px; bottom: 20px; z-index: 500;
+  font-family: var(--mono); font-size: var(--fs-mono-sm); line-height: 1.8;
+  color: var(--faint);
+  opacity: 0; transition: opacity 1s ease .3s;
+  pointer-events: none;
+}
+html.booted #hud { opacity: 1; }
+.hud-dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--sage); margin-right: 8px;
+  box-shadow: 0 0 8px var(--sage);
+  animation: breathe 3.4s ease-in-out infinite;
+}
+@keyframes breathe { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+.hud-sys { color: var(--muted); transition: color .15s; }
+.hud-sys.flash { color: var(--coral); }
+@media (max-width: 720px) { #hud { display: none; } }
+
+/* ================= theme toggle ================= */
+#theme-btn {
+  position: fixed; top: 20px; right: 22px; z-index: 500;
+  font-family: var(--mono); font-size: var(--fs-mono-sm); letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted);
+  background: var(--glass); backdrop-filter: blur(8px);
+  border: 1px solid var(--edge); border-radius: 100px;
+  padding: 9px 18px; cursor: pointer;
+  opacity: 0; transition: opacity 1s ease .5s, color .25s, border-color .25s;
+}
+html.booted #theme-btn { opacity: 1; }
+/* without JS the button can never become visible — don't leave an invisible tab stop */
+html:not(.js) #theme-btn { display: none; }
+#theme-btn:hover { color: var(--bone); border-color: var(--muted); }
+
+/* ================= cursor ring ================= */
+#cursor {
+  position: fixed; top: 0; left: 0; z-index: 900;
+  width: 34px; height: 34px; margin: -17px 0 0 -17px;
+  border: 1px solid var(--muted); border-radius: 50%;
+  pointer-events: none; opacity: 0;
+  transition: width .25s, height .25s, margin .25s, opacity .4s, border-color .25s;
+}
+#cursor.hot { width: 56px; height: 56px; margin: -28px 0 0 -28px; border-color: var(--sage); }
+@media (pointer: coarse) { #cursor { display: none; } }
+
+/* ================= hero ================= */
+#hero {
+  position: relative; min-height: 100svh;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; overflow: hidden;
+}
+#hero-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hero-inner { position: relative; z-index: 2; padding: 0 26px; max-width: 880px; }
+.kicker {
+  font-family: var(--mono); font-size: clamp(10.5px, 2.6vw, var(--fs-mono));
+  letter-spacing: clamp(.16em, 1vw, .3em);
+  text-transform: uppercase; color: var(--muted); margin-bottom: 34px;
+}
+h1 {
+  font-size: clamp(46px, 7.6vw, 96px);
+  font-weight: 300; line-height: 1.06; letter-spacing: -0.015em;
+}
+h1 em { font-style: italic; font-weight: 300; color: var(--sage); }
+.hero-sub {
+  margin: 36px auto 0; max-width: 560px;
+  font-size: clamp(17px, 4.4vw, var(--fs-lead)); color: var(--muted); line-height: 1.65;
+}
+.hero-sub b { color: var(--bone); }
+.scroll-cue { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 2; }
+.scroll-cue span {
+  display: block; width: 1px; height: 56px;
+  background: linear-gradient(180deg, transparent, var(--muted));
+  animation: cue 2.4s ease-in-out infinite;
+}
+@keyframes cue { 0%,100% { transform: scaleY(.4); opacity:.3; } 50% { transform: scaleY(1); opacity:.9; } }
+/* short/landscape viewports: the cue would sit on top of the hero paragraph */
+@media (max-height: 600px) { .scroll-cue { display: none; } }
+
+html.js .hero-inner > * { opacity: 0; transform: translateY(22px); transition: opacity 1.1s ease, transform 1.1s cubic-bezier(.16,1,.3,1); }
+html.js.booted .hero-inner > * { opacity: 1; transform: none; }
+html.js.booted .hero-inner .kicker { transition-delay: .15s; }
+html.js.booted .hero-inner h1 { transition-delay: .3s; }
+html.js.booted .hero-inner .hero-sub { transition-delay: .55s; }
+
+/* ================= chapters ================= */
+.chapter { padding: clamp(84px, 13vh, 170px) 26px; position: relative; }
+.ch-inner { max-width: 1040px; margin: 0 auto; }
+.ch-inner.narrow { max-width: 660px; }
+.ch-inner.center { text-align: center; }
+.ch-no {
+  font-family: var(--mono); font-size: var(--fs-mono); letter-spacing: .28em;
+  text-transform: uppercase; color: var(--faint); margin-bottom: 26px;
+}
+h2 {
+  font-size: clamp(34px, 4.6vw, 56px);
+  font-weight: 300; line-height: 1.12; letter-spacing: -0.012em;
+  max-width: 720px;
+}
+.ch-inner.center h2 { margin: 0 auto; }
+.prose {
+  margin-top: 28px; font-size: var(--fs-body); color: var(--muted);
+  max-width: 620px; line-height: 1.7;
+}
+.prose + .prose { margin-top: 20px; }
+.ch-inner.center .prose { margin-left: auto; margin-right: auto; }
+.prose b { color: var(--bone); }
+.caption { margin-top: 22px; font-size: var(--fs-note); color: var(--faint); max-width: 620px; line-height: 1.7; }
+.ch-inner.center .caption { margin-left: auto; margin-right: auto; }
+.caption b { color: var(--muted); }
+/* one inline-code treatment: <code> and inline .mono must not look like two things */
+.prose code, .caption code, .prose .mono, .caption .mono {
+  font-family: var(--mono); font-size: .82em; color: var(--sage);
+  overflow-wrap: break-word;
+}
+.prose code, .caption code {
+  border: 1px solid var(--hair); border-radius: 4px; padding: 2px 7px;
+}
+
+.spawn-strip {
+  max-width: 1040px; margin: 0 auto 34px; padding: 0 0 14px;
+  font-family: var(--mono); font-size: var(--fs-mono-sm); letter-spacing: .04em;
+  color: var(--faint);
+  border-bottom: 1px solid var(--hair);
+  min-height: 32px; position: relative;
+}
+.spawn-strip::after {
+  content: ''; position: absolute; left: 0; bottom: -1px; height: 1px; width: 0;
+  background: linear-gradient(90deg, var(--sage), transparent);
+  transition: width 1.4s cubic-bezier(.16,1,.3,1);
+}
+.chapter.on .spawn-strip::after { width: 100%; }
+.spawn-strip .ok { color: var(--sage); }
+/* the strip is the rule above the text column — it must share that column's width */
+.chapter:has(.ch-inner.narrow) .spawn-strip { max-width: 660px; }
+
+html.js .ch-inner { opacity: 0; transform: translateY(34px); transition: opacity 1s ease .2s, transform 1s cubic-bezier(.16,1,.3,1) .2s; }
+html.js .chapter.on .ch-inner { opacity: 1; transform: none; }
+
+/* ================= numerals ================= */
+.numerals {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: clamp(28px, 5vw, 60px); margin-top: 64px;
+}
+/* below ~640px auto-fit resolves to two columns and strands the third numeral
+   alone on a second row — stack them instead */
+@media (max-width: 640px) { .numerals { grid-template-columns: 1fr; } }
+.nume .n { display: block; font-size: clamp(52px, 7vw, 80px); font-weight: 300; line-height: 1; }
+.nume:nth-child(1) .n { color: var(--sage); }
+.nume:nth-child(2) .n { color: var(--coral); }
+.nume:nth-child(3) .n { color: var(--ice); }
+.nume .l {
+  display: block; margin-top: 12px;
+  font-family: var(--mono); font-size: var(--fs-mono-sm); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--faint); line-height: 1.8;
+}
+
+/* ================= playground ================= */
+.playground-frame {
+  margin-top: 48px; position: relative;
+  border: 1px solid var(--hair); border-radius: 18px;
+  background: var(--ink-2);
+  overflow: hidden;
+  transition: background .5s ease;
+}
+#play-canvas { display: block; width: 100%; height: clamp(420px, 60vh, 600px); }
+#play-canvas:focus-visible { outline-offset: -3px; }
+.play-stats {
+  padding: 14px 24px;
+  font-family: var(--mono); font-size: var(--fs-mono); color: var(--faint);
+  display: flex; gap: 6px 12px; justify-content: center; flex-wrap: wrap;
+  border-top: 1px solid var(--hair);
+  background: var(--glass); backdrop-filter: blur(6px);
+}
+.play-stats b { color: var(--bone); font-weight: 500; }
+.play-stats b.ok { color: var(--sage); }
+.play-stats b.bad { color: var(--coral); }
+.play-stats .sep { color: var(--faint); opacity: .45; }
+.play-hint {
+  margin-top: 16px; font-family: var(--mono); font-size: var(--fs-mono-sm);
+  letter-spacing: .04em; line-height: 1.8; color: var(--faint);
+}
+.play-hint b { color: var(--muted); font-weight: 500; }
+/* the caption now follows the hint, not the frame — it needs its own gap */
+.play-hint + .sr-only + .caption { margin-top: 30px; }
+
+/* ================= anatomy (clickable architecture) ================= */
+.arch { display: grid; grid-template-columns: 1.15fr .85fr; gap: 26px; margin-top: 48px; align-items: start; }
+@media (max-width: 860px) {
+  .arch { grid-template-columns: 1fr; }
+  .arch-info { position: static; }
+}
+.arch-stack { display: flex; flex-direction: column; gap: 10px; }
+.arch-row { display: grid; gap: 10px; }
+.arch-row.g3 { grid-template-columns: repeat(3, 1fr); }
+.arch-row.entry { grid-template-columns: 1fr 2fr; }
+.arch-row.entry .arch-flow { align-self: center; }
+@media (max-width: 560px) {
+  /* 1fr 2fr leaves the arkctl node ~90px wide on a phone — stack instead */
+  .arch-row.g3, .arch-row.entry { grid-template-columns: 1fr; }
+  .arch-row.entry .arch-flow { text-align: left; }
+}
+.arch-label {
+  font-family: var(--mono); font-size: var(--fs-mono-sm); letter-spacing: .22em;
+  text-transform: uppercase; color: var(--faint); margin-top: 8px;
+}
+.arch-flow { text-align: center; font-family: var(--mono); font-size: var(--fs-mono-sm); color: var(--faint); padding: 2px 0; }
+.node {
+  /* an operable control needs a perceivable boundary — --hair is decorative only */
+  border: 1px solid var(--edge); border-radius: 12px; background: var(--ink-2);
+  padding: 14px; font-family: var(--mono); font-size: var(--fs-mono); color: var(--bone);
+  cursor: pointer; text-align: left;
+  transition: border-color .25s, box-shadow .25s, transform .25s, background .5s ease;
+}
+.node small { display: block; margin-top: 5px; font-size: var(--fs-mono-sm); color: var(--faint); line-height: 1.5; }
+.node:hover { border-color: var(--muted); transform: translateY(-1px); }
+/* selection was a 1px hue change against a 1px hue change — make it readable */
+.node.sel { border-color: var(--sage); box-shadow: inset 0 0 0 1px var(--sage); }
+.node.sel small { color: var(--muted); }
+.arch-info {
+  border: 1px solid var(--hair); border-radius: 14px; background: var(--ink-2);
+  padding: 22px 24px; position: sticky; top: 74px; transition: background .5s ease;
+}
+.arch-info h3 { font-family: var(--mono); font-size: var(--fs-mono); letter-spacing: .14em; color: var(--sage); font-weight: 500; margin-bottom: 12px; }
+.arch-info p { font-size: var(--fs-note); color: var(--muted); line-height: 1.65; }
+.arch-info p + p { margin-top: 12px; }
+.arch-info .mono { font-size: .82em; color: var(--sage); }
+
+/* ================= contract card ================= */
+.contract {
+  margin-top: 48px; border: 1px solid var(--hair); border-radius: 14px;
+  overflow: hidden; background: var(--ink-2); transition: background .5s ease;
+}
+.contract .ct-head { padding: 13px 26px; font-family: var(--mono); font-size: var(--fs-mono); color: var(--faint); border-bottom: 1px solid var(--hair); }
+.contract pre {
+  padding: 24px 26px; font-family: var(--mono);
+  font-size: var(--fs-code); line-height: 1.9; color: var(--muted);
+  white-space: pre-wrap; overflow-wrap: break-word;
+}
+.contract .dim { color: var(--faint); }
+.contract .m { color: var(--sage); }
+.contract .r { color: var(--coral); }
+
+/* ================= terminal (always dark — it's a screen) ============ */
+.term-frame {
+  /* a hairline tuned for the dark screen it borders, not for the page theme */
+  margin-top: 48px; border: 1px solid rgba(236,231,221,0.14); border-radius: 14px;
+  overflow: hidden; background: #0a0908;
+}
+/* the code figures share one measure so their edges line up chapter to chapter */
+.contract, .term-frame { max-width: 780px; }
+.term-head {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  padding: 13px 24px; font-family: var(--mono); font-size: var(--fs-mono); color: #8a8477;
+  border-bottom: 1px solid rgba(236,231,221,0.1);
+}
+.term-head .td { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.term-head .td:nth-child(1) { background: rgba(232,146,124,.5); }
+.term-head .td:nth-child(2) { background: rgba(214,192,143,.5); }
+.term-head .td:nth-child(3) { background: rgba(157,184,154,.5); }
+.term-head .term-title { margin-left: 10px; overflow-wrap: break-word; }
+.term-body {
+  padding: 24px 24px 28px; font-family: var(--mono);
+  font-size: var(--fs-code); line-height: 1.85;
+  min-height: 300px; white-space: pre-wrap; word-break: break-word;
+  color: #a39d8f;
+}
+.term-body .p { color: #9db89a; }
+.term-body .dim { color: #7f7a6d; }
+.term-body .route { color: #d6c08f; }
+.term-body .ans { color: #ece7dd; font-style: italic; font-family: var(--serif); font-size: var(--fs-body-2); line-height: 1.7; }
+.term-body .deny { color: #e8927c; }
+.tcursor { display: inline-block; width: 7px; height: 15px; background: #9db89a; vertical-align: -2px; animation: blink 1s step-start infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ================= plug ================= */
+#plug {
+  margin-top: 52px;
+  display: inline-flex; align-items: center; gap: 14px;
+  padding: 20px 38px;
+  background: transparent; color: var(--coral);
+  border: 1px solid var(--coral); border-radius: 100px;
+  font-family: var(--mono); font-size: var(--fs-mono-lg); letter-spacing: .12em; text-transform: uppercase;
+  cursor: pointer; transition: background .3s, box-shadow .3s, transform .15s;
+}
+#plug:hover { background: rgba(232,146,124,0.1); box-shadow: 0 0 44px rgba(232,146,124,0.2); }
+#plug:active { transform: scale(.97); }
+#restored {
+  margin: 30px auto 0; font-family: var(--mono); font-size: var(--fs-mono); color: var(--sage);
+  padding: 12px 22px; border: 1px solid var(--sage); border-radius: 100px;
+  display: inline-block;
+}
+#restored[hidden] { display: none; }
+
+/* ================= chronicle ================= */
+.chron { list-style: none; margin-top: 54px; }
+.chron li {
+  display: grid; grid-template-columns: 84px 1fr; gap: 22px;
+  padding: 16px 0; align-items: baseline;
+  border-bottom: 1px solid var(--hair-soft);
+  font-size: var(--fs-body-2); color: var(--muted);
+}
+.chron li b { color: var(--bone); font-weight: 500; }
+.chron .v { font-family: var(--mono); font-size: var(--fs-mono); color: var(--faint); }
+.chron li.done .v { color: var(--sage); }
+.chron .dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--sage); margin-left: 8px; vertical-align: .18em; flex: none;
+}
+.chron li.now > span:last-child::after { content: ' — in progress'; font-style: italic; color: var(--faint); font-size: .86em; }
+
+/* ================= coda ================= */
+#coda { text-align: center; padding: 22vh 26px 18vh; }
+.coda-line { font-size: clamp(38px, 5.6vw, 64px); font-weight: 300; line-height: 1.15; letter-spacing: -0.012em; }
+.coda-line em { color: var(--sage); }
+.colophon { margin-top: 64px; font-family: var(--mono); font-size: var(--fs-mono-sm); letter-spacing: .26em; text-transform: uppercase; color: var(--faint); }
+
+/* ================= motion prefs / responsive ================= */
+@media (prefers-reduced-motion: reduce) {
+  html.js .ch-inner, html.js .hero-inner > * { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .scroll-cue, .hud-dot { animation: none; }
+  #boot { display: none; }
+  #cursor { display: none; }
+}
+@media (max-width: 640px) {
+  .chapter { padding: 12vh 20px; }
+  .hero-inner { padding: 0 20px; }
+  .chron li { grid-template-columns: 62px 1fr; gap: 14px; }
+  .numerals { gap: 36px; }
+  #plug { padding: 16px 28px; }
+  #theme-btn { top: 14px; right: 14px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="plankton" aria-hidden="true"></canvas>
+
+<div id="boot" aria-hidden="true">
+  <pre id="boot-log"></pre>
+  <div id="boot-skip">click to skip</div>
+</div>
+
+<div id="powerdown" aria-hidden="true"><div class="pd-line"></div></div>
+
+<aside id="hud" aria-hidden="true">
+  <div class="hud-row"><span class="hud-dot"></span>arkane v0.21 · up <span id="hud-up">00:00</span> · cells <span id="hud-cells">7/7</span></div>
+  <div class="hud-row hud-sys" id="hud-sys">SYS_WAIT</div>
+</aside>
+
+<button id="theme-btn" type="button" aria-label="Switch to light theme">◐ dark</button>
+<div id="cursor" aria-hidden="true"></div>
+
+<main>
+
+<!-- ============ HERO ============ -->
+<header id="hero">
+  <canvas id="hero-canvas" aria-hidden="true"></canvas>
+  <div class="hero-inner">
+    <div class="kicker">Arkane OS — a specialised operating system in Rust</div>
+    <h1>An operating system<br><em>built from isolated cells.</em></h1>
+    <p class="hero-sub">Built for three things: <b>security</b>, <b>stability</b>
+    and <b>less overhead</b>. A ~13,000-line kernel that almost never changes —
+    everything else, from the network to the AI model, runs in
+    <b>hardware-isolated cells</b> that update and heal like a server fleet.</p>
+  </div>
+  <div class="scroll-cue" aria-hidden="true"><span></span></div>
+</header>
+
+<!-- ============ 01 PRINCIPLE ============ -->
+<section class="chapter" id="principle">
+  <div class="spawn-strip" data-cell="principle"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">01 · Principle</div>
+    <h2>What does not exist cannot be exploited.</h2>
+    <p class="prose">Run a language model in a bank or a hospital today and it stands
+    on thirty years of legacy: four hundred syscalls, shells, dynamic linkers —
+    and a kernel that needs patching every month. Arkane starts from the other
+    end — from <em>nothing</em> — and only adds what can be proven.
+    Isolation is not a check the kernel performs on every operation: it is wired
+    into the page tables <b>once, at spawn</b>. Drivers, network and storage live
+    in cells — so when they break or need an update, <b>the kernel doesn't</b>.</p>
+    <p class="prose">That is the whole bargain: a smaller surface to attack,
+    a kernel stable enough to leave alone, and nothing running that you never
+    asked for. <b>Security, stability, less overhead</b> — not features bolted on,
+    but what is left once everything unnecessary is gone.</p>
+    <div class="numerals">
+      <div class="nume"><span class="n">26</span><span class="l">syscalls,<br>the entire API</span></div>
+      <div class="nume"><span class="n">~13k</span><span class="l">lines of Rust,<br>the whole kernel</span></div>
+      <div class="nume"><span class="n">0</span><span class="l">lines of C.<br>POSIX. shell.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 ISOLATION ============ -->
+<section class="chapter" id="isolation">
+  <div class="spawn-strip" data-cell="isolation"></div>
+  <div class="ch-inner">
+    <div class="ch-no">02 · Isolation</div>
+    <h2>Try to break it.</h2>
+    <p class="prose">This is the real v0.21 cluster — the same handful of cells around a kernel, each
+    with its own page table. Isolation is enforced by the MMU, not by policy.
+    <b>Click a cell and watch what happens.</b> Then try killing
+    <b>gw-admin</b> — the control plane, which is also the <b>ACP&nbsp;healer</b>.
+    And if you want to see where the chain of watchers really ends, kill the
+    <b>supervisor</b> first.</p>
+    <div class="playground-frame">
+      <canvas id="play-canvas" tabindex="0" role="application"
+        aria-describedby="play-hint"
+        aria-label="Cell cluster playground — crash a cell and watch the healer respawn it"></canvas>
+      <div class="play-stats mono">
+        <span>healer <b class="ok" id="stat-healer">online</b></span>
+        <span class="sep">·</span>
+        <span>respawns <b id="stat-respawns">0</b></span>
+        <span class="sep">·</span>
+        <span>drift pending <b id="stat-drift">0</b></span>
+        <span class="sep">·</span>
+        <span>kernel restarts <b class="ok">0</b></span>
+      </div>
+    </div>
+    <p class="play-hint" id="play-hint">Click a cell to crash it. With the map focused:
+    <b>←</b>/<b>→</b> select a cell, <b>Enter</b> crashes it.</p>
+    <p class="sr-only" id="play-status" role="status" aria-live="polite"></p>
+    <p class="caption">Crash → <span class="mono">HEALER_DRIFT_DEAD</span> → respawn: gw-admin heals
+    the drift within moments. gw-admin itself sits on the watch list of a tiny
+    <b>supervisor cell</b> that replays the signed boot recipe
+    (<span class="mono">SYS_CELL_RESPAWN_BOOT</span>) when a watched cell dies — cells that die
+    in the meantime pile up as pending drift, and restoring takes noticeably longer: the healer
+    must reload and verify its state before it may act. <b>What the acceptance suite proves</b>
+    is the persistence cell's kill&nbsp;→&nbsp;respawn; for gw-admin the arm is loaded but has
+    never fired outside this simulation — because there is <b>no outside kill switch for the
+    control plane at all</b>: the kernel refuses self-stop, and nobody else takes orders. The
+    playground lets you do what production won't. Kill the <b>supervisor itself</b> and it
+    stays dead — the supervisor has no supervisor (a mutual-supervision pair is on the
+    roadmap), and with it down, a dead watched cell stays down too. The chain of watchers ends
+    somewhere, and Arkane tells you exactly where.</p>
+  </div>
+</section>
+
+<!-- ============ 03 ANATOMY ============ -->
+<section class="chapter" id="anatomy">
+  <div class="spawn-strip" data-cell="anatomy"></div>
+  <div class="ch-inner">
+    <div class="ch-no">03 · Anatomy</div>
+    <h2>What it is made of.</h2>
+    <p class="prose">Every box is a real binary in the repository — no marketing
+    architecture. <b>Click a component.</b></p>
+    <div class="arch">
+      <div class="arch-stack" id="arch-stack">
+        <div class="arch-row entry">
+          <button class="node" data-k="arkctl" type="button">arkctl<small>operator CLI</small></button>
+          <div class="arch-flow">mTLS · HTTP/2 · gRPC →</div>
+        </div>
+        <div class="arch-label">gateway cells</div>
+        <div class="arch-row g3">
+          <button class="node" data-k="gwadmin" type="button">gw-admin<small>control plane · ACP healer</small></button>
+          <button class="node" data-k="gwpublic" type="button">gw-public<small>chat API · web apps</small></button>
+          <button class="node" data-k="gwmcp" type="button">gw-mcp<small>MCP tool host</small></button>
+        </div>
+        <div class="arch-flow">↓ capability-mediated IPC ↓</div>
+        <div class="arch-label">workload cells</div>
+        <div class="arch-row g3">
+          <button class="node" data-k="inference" type="button">inference<small>weights mapped read-only</small></button>
+          <button class="node" data-k="storage" type="button">persistence<small>durable state · WAL</small></button>
+          <button class="node" data-k="tools" type="button">tool cells<small>isolated MCP tools</small></button>
+        </div>
+        <div class="arch-flow">↓ 26 syscalls — every one a capability check ↓</div>
+        <button class="node" data-k="kernel" type="button">exokernel<small>capability check · memory mapping · IRQ routing · IPC — nothing else</small></button>
+        <button class="node" data-k="hw" type="button">hardware<small>virtio-net · virtio-blk · MSI-X · IOMMU (v0.24)</small></button>
+      </div>
+      <div class="arch-info" id="arch-info">
+        <h3>// select a component</h3>
+        <p>Everything shown here runs today — spawned, signed and isolated
+        on the real kernel, preemptively scheduled across four cores.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 04 LAW ============ -->
+<section class="chapter" id="law">
+  <div class="spawn-strip" data-cell="law"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">04 · Law</div>
+    <h2>Two keys, one law.</h2>
+    <p class="prose">The developer signs the <b>shape</b> of a cell into its binary.
+    The operator provides the <b>values</b> in the manifest. The kernel enforces both —
+    structurally, default-deny, at every spawn. Access exists only as a
+    <b>capability</b>: an unforgeable token, derivable and transitively revocable.</p>
+    <div class="contract mono">
+      <div class="ct-head">cells/inference · signed ed25519 ✓</div>
+      <pre><span class="m">#[arkane_contract(</span>
+    needs(memory = "16MB"),
+    needs(share::read = "model"),
+    <span class="r">forbid(net::inbound, net::outbound, spawn)</span>
+<span class="m">)]</span></pre>
+    </div>
+    <p class="caption">What is forbidden here is not monitored — it is <b>never wired up</b>.</p>
+  </div>
+</section>
+
+<!-- ============ 05 CAGE ============ -->
+<section class="chapter" id="cage">
+  <div class="spawn-strip" data-cell="cage"></div>
+  <div class="ch-inner">
+    <div class="ch-no">05 · Cage</div>
+    <h2>The AI that cannot phone home.</h2>
+    <p class="prose">A real language model runs inside the inference cell — its own
+    <code>no_std</code> engine, token-identical to the reference implementation.
+    The only thing it can do is <b>answer whoever called it</b> — network cards exist
+    only in the three gateway cells, so every byte in or out crosses one of exactly
+    three audited membranes.</p>
+    <div class="term-frame">
+      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">gw-public :8081 · /v1/chat/completions</span></div>
+      <pre class="mono term-body" id="term-body"></pre>
+    </div>
+    <p class="caption">Why can't it phone home? Not because a firewall says no — because
+    <b>the path does not exist</b>. A cell receives exactly what its manifest grants,
+    on top of what its signed contract allows. The inference manifest grants memory and
+    the model weights — and nothing network-shaped. Since no capability for a network
+    card is ever declared, the kernel never wires one up: there is nothing to block,
+    monitor, or misconfigure. This is what the operator's manifest looks like:</p>
+    <div class="contract">
+      <div class="ct-head mono">manifest.yaml · cell: inference</div>
+      <pre><span class="m">arkane:</span> v1
+<span class="m">kind:</span> Cell
+<span class="m">metadata:</span>
+  name: inference
+<span class="m">spec:</span>
+  image: prod.images.inference@blake3:9c41…   <span class="r"># signed — contract forbids net</span>
+  resources: { memory: 4MB, cpu_shares: 1.0, heap_kib: 16384 }
+  shares:
+    model: blake3:7c8a…                        <span class="r"># weights, mapped read-only</span>
+  capabilities: []
+  <span class="r"># no mmio, no port, no endpoint —
+  # a path to a network card is never created</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 06 PROOF ============ -->
+<section class="chapter" id="proof">
+  <div class="spawn-strip" data-cell="proof"></div>
+  <div class="ch-inner narrow center">
+    <div class="ch-no">06 · Proof</div>
+    <h2>Pull the plug.</h2>
+    <p class="prose">Every apply is written to a <b>Blake3-chained write-ahead log</b>;
+    a persistence cell mirrors the cluster state to its own disk, anchored through a
+    double-buffered root pointer the kernel reads at boot. Kill the power mid-flight
+    and the next boot replays: every cell, every capability, every model mapping
+    comes back — <b>without re-applying anything</b>. This page mirrors that
+    mechanism. Cut the power and see what's left.</p>
+    <button id="plug" type="button">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.5a8 8 0 1 0 11.4 0"/></svg>
+      <span>Cut the power</span>
+    </button>
+    <div id="restored" hidden></div>
+    <p class="caption">In the real system this test is called <span class="mono">make t4-demo</span>:
+    apply → hard kernel reboot → the cluster is still there. It has been part of the
+    acceptance suite since v0.14.</p>
+  </div>
+</section>
+
+<!-- ============ 07 AUDIT ============ -->
+<section class="chapter" id="audit">
+  <div class="spawn-strip" data-cell="audit"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">07 · Audit</div>
+    <h2>Prove what ran.</h2>
+    <p class="prose">Seeing what runs is the easy half: the kernel attributes every
+    timer tick to the cell it hit, every cell carries a log ring, and every external
+    request gets a <b>trace id</b> that rides the IPC header into each cell it touches —
+    <span class="mono">arkctl top</span>, <span class="mono">arkctl logs --trace</span>.
+    The hard half is proving what ran <i>after the fact</i>. So every security-relevant
+    event — spawn, stop, crash, capability grant, contract refusal — becomes an
+    immutable block in a <b>Blake3 hash chain</b>, where each block's content hash
+    <i>is</i> the next block's back-link, mirrored block by block to disk. Verification
+    is offline: <b>the auditor needs the drive, not the running system.</b></p>
+    <div class="contract">
+      <div class="ct-head mono">arkctl audit · offline against the mirrored disk</div>
+      <pre>$ arkctl audit verify --store store.img --list
+<span class="m">audit chain OK: 23 blocks, head seq=22 hash=6b01c4…</span>
+seq=5   kind=spawn             cell=1   aux=0x3e8
+seq=9   kind=contract-refusal  cell=5   aux=0xc
+seq=14  kind=stop              cell=1   aux=0xa
+
+$ printf '\x01' | dd of=store.img seek=571432 …   <span class="r"># flip ONE byte, anywhere in one block</span>
+$ arkctl audit verify --store store.img
+<span class="r">audit verify FAILED: TAMPER: block seq=4 does not
+hash to its stored id (content was modified)</span>
+
+$ arkctl audit anchor --store store.img --key signer.key --out anchor.bin
+<span class="m">anchored: seq=22 head=6b01c4… → anchor.bin</span>   <span class="r"># Ed25519, operator key — the kernel never signs</span></pre>
+    </div>
+    <p class="prose">And the honest boundary, stated exactly: the chain proves tampering
+    and gaps <b>after its last verified anchor</b>. An attacker who controls the kernel
+    <i>before</i> the first anchor can rewrite the story up to that point. In-system
+    anchoring keys arrive with the keystore (v0.21); external anchoring later. Until
+    then, this sentence is the precise edge of the claim — not a footnote to it.</p>
+    <p class="caption">This is an acceptance gate, run on every merge: flip one byte in
+    the mirrored chain — verify names the lying block. Flip it back — the chain is green
+    again. Detection is exact, not approximate.</p>
+  </div>
+</section>
+
+<!-- ============ 08 SEALED ============ -->
+<section class="chapter" id="sealed">
+  <div class="spawn-strip" data-cell="sealed"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">08 · Sealed</div>
+    <h2>Nothing readable on the disk.</h2>
+    <p class="prose">The audit chain proves what ran. This proves what it can’t read.
+    Every app-data body is encrypted before it is mirrored to disk — XChaCha20-Poly1305
+    under a key that lives only in a <b>net-free keystore cell</b>, unlocked once per boot
+    and held only in RAM. The acceptance gate is a single command anyone can run:
+    <span class="mono">strings store.img</span> after a full notes round-trip finds
+    <b>no plaintext body</b>. Flip one ciphertext byte and the read fails loudly — an
+    AEAD error, never silent garbage.</p>
+    <div class="contract">
+      <div class="ct-head mono">the headline gate · run it yourself</div>
+      <pre>$ strings crates/arkane-kernel/store.img | grep -c "secret note body"
+<span class="m">0</span>   <span class="dim"># the note is on disk — as ciphertext</span>
+
+$ arkctl secrets set db-password --value-stdin   <span class="r"># by name, never by value</span>
+$ arkctl secrets grant db-password 7             <span class="dim"># only cell 7 may read it</span></pre>
+    </div>
+    <p class="prose"><b>The app never holds the credential.</b> An MCP agent calls a
+    token-protected tool through the gateway; the gateway fetches the token from the
+    keystore per call and injects it, the target verifies it against its own grant —
+    and the agent never sees, sends, or can override it. A fully compromised app can’t
+    leak a secret it never had. That is the difference from a container, where the app
+    almost always holds its own credentials in an env var.</p>
+    <p class="prose">At the edges: the agent gateway can terminate <b>TLS 1.3</b> (optional,
+    off by default — the QEMU dev default is honest plaintext on a LAN), and the
+    read-only console gains its first write — stopping a cell — behind a
+    per-launch token on top of loopback.</p>
+    <p class="prose">That console is where <b>v0.22</b> continues — in acceptance now,
+    green under QEMU, not yet tagged. Login is TLS on <span class="mono">:9443</span>,
+    the password is checked by Argon2id inside the net-free auth cell, and the session is
+    an HttpOnly, Secure, SameSite=Strict cookie carrying one of three roles — viewer,
+    operator, admin. Every write runs the same order — CSRF token, server-side role
+    check, audit entry first — across the cell lifecycle (stop, start, and restart as an
+    honest stop → respawn → start, so the kernel hands back a <b>new cell id</b>, proven in
+    the serial log), a secrets inventory that lists names and grants but structurally never
+    a value, and a manifest deploy whose diff preview mutates nothing and whose invalid
+    input is refused with a readable reason, fail-closed. Five failed logins return
+    <span class="mono">429</span>; every accepted write is hash-chained under the acting
+    user’s digest.</p>
+    <p class="caption">The honest boundary, stated exactly: <b>at rest means the disk.</b>
+    The kernel’s in-RAM blob table still holds plaintext while the machine runs —
+    the same edge as “it runs in QEMU.” And the key hierarchy is real, but
+    <b>you are its recovery</b>: lose both the operator key and the exported recovery file
+    and the data is gone, by design — no in-system escrow to steal.</p>
+  </div>
+</section>
+
+<!-- ============ 09 GET IT ============ -->
+<section class="chapter" id="getit">
+  <div class="spawn-strip" data-cell="getit"></div>
+  <div class="ch-inner">
+    <div class="ch-no">09 · Get it</div>
+    <h2>Three commands, and it runs.</h2>
+    <p class="prose">Up to here you could only read. This is what the v0.20 line added:
+    <b>the whole OS builds as one signed artifact</b>. <span class="mono">make image</span>
+    produces the kernel binary, the baked-in cells — each individually signed — fresh disks,
+    and a manifest that names every baked hash, signed as one Ed25519 unit.
+    <span class="mono">arkctl image verify</span> checks that receipt offline; the bundled
+    <span class="mono">qemu-run.sh</span> boots exactly what was verified. No installer,
+    no download portal — a repository and a receipt.</p>
+    <div class="term-frame">
+      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">arkane-os · from clone to running system</span></div>
+      <pre class="mono term-body" id="getit-body"></pre>
+    </div>
+    <p class="prose">Installing an app is the same trust decision the kernel makes at spawn.
+    A bundle is one content-addressed unit — manifest plus signed cell image — and
+    <span class="mono">arkctl app install</span> verifies it against the same root-signed
+    whitelist the kernel bakes in, <b>refusing before any network is touched</b>. Your own
+    cell starts as <span class="mono">arkctl new</span>: one crate
+    (<span class="mono">arkane-sdk</span>), a signed contract,
+    <span class="mono">arkctl bundle pack</span>. And <span class="mono">arkctl
+    dashboard</span> is the first picture an outsider gets of the running system — a
+    console speaking the exact RPCs <span class="mono">arkctl metrics</span> and
+    <span class="mono">arkctl logs</span> speak, served on loopback only — read-only, with a single
+    token-gated write (stop a cell).</p>
+    <p class="caption">The honest edges, stated exactly: the image targets QEMU — bare metal
+    is a named trigger, not a promise. A fresh checkout generates its own key material; the
+    chain — root → whitelist → per-image signature — is real, but <b>you are its root</b>
+    (production keys arrive via <span class="mono">arkctl keys</span>). A brand-new cell is
+    baked in at <span class="mono">make image</span> time before install can spawn it by
+    hash — uploading images into a running system is deliberately not a path. The CI builds
+    these same signed artifacts on every push to main, as provider-neutral stages: switching
+    CI vendors is a config change, not a build change.</p>
+  </div>
+</section>
+
+<!-- ============ 10 CHRONICLE ============ -->
+<section class="chapter" id="chronicle">
+  <div class="spawn-strip" data-cell="chronicle"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">10 · Chronicle</div>
+    <h2>Every version a proof.</h2>
+    <ul class="chron">
+      <li class="done"><span class="v">v0.13</span><span><b>Persistence</b> — Blake3 write-ahead log, crash recovery<i class="dot" aria-hidden="true"></i><span class="sr-only"> — shipped</span></span></li>
+      <li class="done"><span class="v">v0.14</span><span><b>Kernel minimization</b> — state survives the reboot<i class="dot" aria-hidden="true"></i><span class="sr-only"> — shipped</span></span></li>
+      <li class="done"><span class="v">v0.15</span><span><b>Trust anchors</b> — three-stage Ed25519 signature chain<i class="dot" aria-hidden="true"></i><span class="sr-only"> — shipped</span></span></li>
+      <li class="done"><span class="v">v0.16</span><span><b>Cell contracts</b> — two keys become law<i class="dot" aria-hidden="true"></i><span class="sr-only"> — shipped</span></span></li>
+      <li class="done"><span class="v">v0.17</span><span><b>AI workloads</b> — in-cell inference, chat API, MCP tool cells<i class="dot" aria-hidden="true"></i><span class="sr-only"> — shipped</span></span></li>
+      <li class="done"><span class="v">v0.18</span><span><b>Preemption &amp; multicore</b> — time slices, four cores, exclusive core ownership as a capability<i class="dot" aria-hidden="true"></i><span class="sr-only"> — shipped</span></span></li>
+      <li class="done"><span class="v">v0.19</span><span><b>Observability &amp; audit</b> — per-cell CPU time, log rings, request tracing, a tamper-evident audit chain, reproducible benchmarks<i class="dot" aria-hidden="true"></i><span class="sr-only"> — shipped</span></span></li>
+      <li class="done"><span class="v">v0.20</span><span><b>SDK &amp; app lifecycle</b> — signed app bundles, one-command install, the OS as a signed CI-built image, a read-only console<i class="dot" aria-hidden="true"></i><span class="sr-only"> — shipped</span></span></li>
+      <li class="done"><span class="v">v0.21</span><span><b>Data protection</b> — encryption at rest (nothing readable on the disk), a net-free keystore, credentials an app never holds, optional TLS at the edge, a token-gated dashboard stop<i class="dot" aria-hidden="true"></i><span class="sr-only"> — shipped</span></span></li>
+      <li class="now"><span class="v">v0.22</span><span>Operator console — browser login with roles (Argon2id in a net-free auth cell), server-side RBAC and CSRF on every write, cell lifecycle (stop/start/restart), a value-free secrets inventory and manifest deploy with a diff preview — each write CSRF-gated, role-checked and hash-chain audited. In acceptance now, tag pending.</span></li>
+      <li><span class="v">v0.23</span><span>ArkDB — a database as a contracted cell, benchmarked before claimed<span class="sr-only"> — planned</span></span></li>
+      <li><span class="v">v0.24</span><span>Hardware trust — IOMMU, TPM. Required before 1.0.<span class="sr-only"> — planned</span></span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ CODA ============ -->
+<footer id="coda">
+  <p class="coda-line">What does not exist<br><em>cannot break.</em></p>
+  <div class="colophon">arkane@2026</div>
+</footer>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/ScrollTrigger.min.js" defer></script>
+
+<script>
+/* ============ Arkane Organism — cell simulation ============ */
+(function () {
+  'use strict';
+
+  const TAU = Math.PI * 2;
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* theme palettes for everything canvas-drawn */
+  const PALETTES = {
+    dark: {
+      cells: { sage: '#9db89a', coral: '#e8927c', ice: '#a8c5d6', sand: '#d6c08f' },
+      kernel: '236,231,221',
+      label: 'rgba(236,231,221,0.55)',
+      deadLabel: 'rgba(232,146,124,0.5)',
+      dead: 'rgba(232,146,124,0.16)',
+      filament: '214,192,143',
+      plankton: '148,210,140',
+    },
+    light: {
+      cells: { sage: '#66835f', coral: '#c2613f', ice: '#5d7f96', sand: '#a98f54' },
+      kernel: '36,31,23',
+      label: 'rgba(36,31,23,0.6)',
+      deadLabel: 'rgba(194,97,63,0.6)',
+      dead: 'rgba(194,97,63,0.22)',
+      filament: '169,143,84',
+      plankton: '74,128,64',
+    },
+  };
+  const pal = () => PALETTES[document.documentElement.dataset.theme] || PALETTES.dark;
+
+  class Cell {
+    constructor(opts) {
+      this.label = opts.label || null;
+      this.role = opts.role || 'cell';          // cell | healer | kernel
+      this.colorKey = opts.color;               // semantic key into palette
+      this.baseR = opts.r;
+      this.home = { x: opts.x, y: opts.y };
+      this.pos = { x: opts.x, y: opts.y };
+      this.phase = Math.random() * TAU;
+      this.driftSeed = Math.random() * 1000;
+      this.points = opts.points || 16;
+      this.alive = true;
+      this.scale = 1;
+    }
+    color() { return pal().cells[this.colorKey] || this.colorKey; }
+    center(w, h) { return { x: this.pos.x * w, y: this.pos.y * h }; }
+
+    update(t, dt, w, h, mouse, others, drift) {
+      const s = this.driftSeed;
+      const dx = Math.sin(t * 0.00013 + s) * drift + Math.sin(t * 0.00007 + s * 2) * drift * 0.6;
+      const dy = Math.cos(t * 0.00011 + s * 3) * drift + Math.cos(t * 0.00005 + s) * drift * 0.5;
+      let tx = this.home.x + dx, ty = this.home.y + dy;
+
+      if (mouse.active) {
+        const cx = tx * w, cy = ty * h;
+        const mdx = cx - mouse.x, mdy = cy - mouse.y;
+        const d = Math.hypot(mdx, mdy);
+        const reach = this.baseR + 130;
+        if (d < reach && d > 1) {
+          const f = (1 - d / reach) * 0.04;
+          tx += (mdx / d) * f;
+          ty += (mdy / d) * f;
+        }
+      }
+      for (const o of others) {
+        if (o === this || !o.alive) continue;
+        const ax = (tx - o.pos.x) * w, ay = (ty - o.pos.y) * h;
+        const d = Math.hypot(ax, ay);
+        const min = (this.baseR + o.baseR) * 1.05;
+        if (d < min && d > 1) {
+          const f = (1 - d / min) * 0.02;
+          tx += (ax / d) * f;
+          ty += (ay / d) * f;
+        }
+      }
+      this.pos.x += (tx - this.pos.x) * Math.min(1, dt * 0.0018);
+      this.pos.y += (ty - this.pos.y) * Math.min(1, dt * 0.0018);
+      if (this.alive && this.scale < 1) this.scale = Math.min(1, this.scale + dt * 0.0016);
+    }
+
+    membrane(t, w, h, wobble) {
+      const c = this.center(w, h);
+      const pts = [];
+      const grow = this.scale < 1 ? 1 - Math.pow(1 - this.scale, 3) : 1;
+      const R = this.baseR * grow;
+      for (let i = 0; i < this.points; i++) {
+        const a = (i / this.points) * TAU;
+        const r = R * (1
+          + wobble * Math.sin(t * 0.0011 + i * 1.7 + this.phase)
+          + wobble * 0.7 * Math.sin(t * 0.0007 - i * 2.3 + this.phase * 2));
+        pts.push({ x: c.x + Math.cos(a) * r, y: c.y + Math.sin(a) * r });
+      }
+      return pts;
+    }
+    hit(x, y, w, h) {
+      const c = this.center(w, h);
+      return Math.hypot(x - c.x, y - c.y) < this.baseR * 1.12;
+    }
+  }
+
+  function tracePath(ctx, pts) {
+    const n = pts.length;
+    const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    let m = mid(pts[n - 1], pts[0]);
+    ctx.moveTo(m.x, m.y);
+    for (let i = 0; i < n; i++) {
+      const next = mid(pts[i], pts[(i + 1) % n]);
+      ctx.quadraticCurveTo(pts[i].x, pts[i].y, next.x, next.y);
+    }
+    ctx.closePath();
+  }
+
+  class CellField {
+    constructor(canvas, opts) {
+      this.canvas = canvas;
+      this.ctx = canvas.getContext('2d');
+      this.mode = opts.mode || 'ambient';
+      this.wobble = opts.wobble ?? 0.055;
+      this.drift = opts.drift ?? 0.03;
+      this.onEvent = opts.onEvent || (() => {});
+      this.cells = opts.cells.map(c => new Cell(c));
+      this.particles = [];
+      this.filaments = [];
+      this.nextFilament = 2200;
+      this.mouse = { x: 0, y: 0, active: false };
+      this.visible = false;
+      this.last = performance.now();
+      this.dpr = Math.min(devicePixelRatio || 1, 1.75);
+
+      this.resize();
+      addEventListener('resize', () => this.resize());
+
+      canvas.addEventListener('pointermove', e => {
+        const r = canvas.getBoundingClientRect();
+        this.mouse.x = (e.clientX - r.left) * this.dpr;
+        this.mouse.y = (e.clientY - r.top) * this.dpr;
+        this.mouse.active = true;
+        if (this.mode === 'interactive') this.updateCursor();
+      });
+      canvas.addEventListener('pointerleave', () => { this.mouse.active = false; });
+
+      if (this.mode === 'interactive') {
+        canvas.addEventListener('click', e => {
+          const r = canvas.getBoundingClientRect();
+          this.clickAt((e.clientX - r.left) * this.dpr, (e.clientY - r.top) * this.dpr);
+        });
+        // pointer-only was the whole story here — arrows select, Enter crashes
+        this.focused = null;
+        canvas.addEventListener('keydown', e => {
+          const pool = this.cells.filter(c => c.role !== 'kernel');
+          if (!pool.length) return;
+          const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+          if (step) {
+            e.preventDefault();
+            const i = pool.indexOf(this.focused);
+            this.focused = pool[i < 0
+              ? (step > 0 ? 0 : pool.length - 1)
+              : (i + step + pool.length) % pool.length];
+            this.onEvent('select', this.focused);
+          } else if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (!this.focused) { this.focused = pool[0]; this.onEvent('select', this.focused); }
+            else if (this.focused.alive) this.crash(this.focused);
+            else this.onEvent('select', this.focused);
+          } else return;
+          if (REDUCED) this.draw(performance.now());
+        });
+        canvas.addEventListener('blur', () => {
+          this.focused = null;
+          if (REDUCED) this.draw(performance.now());
+        });
+      }
+
+      new IntersectionObserver(es => {
+        this.visible = es.some(x => x.isIntersecting);
+        if (this.visible && !REDUCED) this.loop();
+        if (REDUCED) this.draw(performance.now());
+      }, { threshold: 0.05 }).observe(canvas);
+    }
+
+    resize() {
+      const r = this.canvas.getBoundingClientRect();
+      this.canvas.width = Math.round(r.width * this.dpr);
+      this.canvas.height = Math.round(r.height * this.dpr);
+      if (REDUCED) this.draw(performance.now());
+    }
+    get w() { return this.canvas.width; }
+    get h() { return this.canvas.height; }
+
+    updateCursor() {
+      const over = this.cells.some(c => c.alive && c.role !== 'kernel'
+        && c.hit(this.mouse.x, this.mouse.y, this.w, this.h));
+      this.canvas.style.cursor = over ? 'pointer' : 'default';
+    }
+
+    clickAt(x, y) {
+      for (const c of this.cells) {
+        if (!c.hit(x, y, this.w, this.h)) continue;
+        if (c.role === 'kernel') { this.onEvent('kernel-denied'); return; }
+        if (!c.alive) return;
+        this.crash(c);
+        return;
+      }
+    }
+
+    crash(cell) {
+      cell.alive = false;
+      const c = cell.center(this.w, this.h);
+      for (let i = 0; i < 16; i++) {
+        const a = Math.random() * TAU, v = 0.5 + Math.random() * 1.6;
+        this.particles.push({ x: c.x, y: c.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, color: cell.color() });
+      }
+      this.onEvent('crash', cell);
+    }
+
+    revive(cell) {
+      if (cell.alive) return;
+      cell.alive = true;
+      cell.scale = 0.05;
+      this.onEvent('respawn', cell);
+    }
+
+    // directed filament from one cell to another; onArrive fires when it lands.
+    // kind: 'heal' (gw-admin respawns a cell) | 'kernel' (supervisor replays the signed boot recipe)
+    pulse(from, to, opts = {}) {
+      const duration = opts.duration || 1100;
+      if (REDUCED) {
+        if (opts.onArrive) setTimeout(opts.onArrive, duration);
+        return;
+      }
+      this.filaments.push({
+        a: from, b: to, p: 0,
+        speed: 1 / duration,
+        kind: opts.kind || 'heal',
+        onArrive: opts.onArrive,
+      });
+    }
+
+    loop() {
+      if (!this.visible || this._running || REDUCED) return;
+      this._running = true;
+      const step = (t) => {
+        if (!this.visible) { this._running = false; return; }
+        const dt = Math.min(50, t - this.last);
+        this.last = t;
+        this.update(t, dt);
+        this.draw(t);
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+
+    update(t, dt) {
+      const alive = this.cells.filter(c => c.alive);
+      for (const c of this.cells) {
+        if (c.role === 'kernel') continue;
+        c.update(t, dt, this.w, this.h, this.mouse, this.cells, this.drift);
+      }
+      this.particles = this.particles.filter(p => (p.life -= dt * 0.0016) > 0);
+      for (const p of this.particles) { p.x += p.vx * dt * 0.12; p.y += p.vy * dt * 0.12; }
+
+      for (const f of this.filaments) {
+        f.p += dt * f.speed;
+        if (!f.arrived && f.p >= 1) {
+          f.arrived = true;
+          if (f.onArrive) f.onArrive();
+        }
+      }
+      this.filaments = this.filaments.filter(f => f.p < 1.15);
+
+      // ambient mode wanders; interactive filaments are causal (pulse only)
+      if (this.mode !== 'interactive') {
+        this.nextFilament -= dt;
+        if (!this.filaments.length && this.nextFilament <= 0 && alive.length >= 2) {
+          const pool = alive.filter(c => c.role !== 'kernel');
+          if (pool.length >= 2) {
+            let a = pool[Math.floor(Math.random() * pool.length)], b = a;
+            while (b === a) b = pool[Math.floor(Math.random() * pool.length)];
+            this.filaments.push({ a, b, p: 0, speed: 0.0009, kind: 'ambient' });
+          }
+          this.nextFilament = 2600 + Math.random() * 2600;
+        }
+      }
+    }
+
+    draw(t) {
+      const { ctx, w, h } = this;
+      const P = pal();
+      ctx.clearRect(0, 0, w, h);
+      const fontPx = Math.round(11 * this.dpr);
+
+      for (const f of this.filaments) {
+        const A = f.a.center(w, h), B = f.b.center(w, h);
+        const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2 - 40 * this.dpr;
+        const rgb = f.kind === 'heal' ? P.plankton : f.kind === 'kernel' ? P.kernel : P.filament;
+        const strong = f.kind !== 'ambient';
+        ctx.beginPath();
+        ctx.moveTo(A.x, A.y);
+        ctx.quadraticCurveTo(mx, my, B.x, B.y);
+        ctx.strokeStyle = `rgba(${rgb},${strong ? 0.32 : 0.18})`;
+        ctx.lineWidth = this.dpr;
+        ctx.stroke();
+        const p = Math.min(1, f.p);
+        const ix = (1 - p) * (1 - p) * A.x + 2 * (1 - p) * p * mx + p * p * B.x;
+        const iy = (1 - p) * (1 - p) * A.y + 2 * (1 - p) * p * my + p * p * B.y;
+        ctx.beginPath();
+        ctx.arc(ix, iy, (strong ? 3 : 2.4) * this.dpr, 0, TAU);
+        ctx.fillStyle = `rgba(${rgb},0.9)`;
+        ctx.fill();
+      }
+
+      for (const cell of this.cells) {
+        if (cell.role === 'kernel') { this.drawKernel(cell, t); continue; }
+        const c = cell.center(w, h);
+        if (cell === this.focused) {
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, cell.baseR + 9 * this.dpr, 0, TAU);
+          ctx.strokeStyle = P.label;
+          ctx.setLineDash([3 * this.dpr, 4 * this.dpr]);
+          ctx.lineWidth = 1.5 * this.dpr;
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        if (!cell.alive) {
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, cell.baseR * 0.6, 0, TAU);
+          ctx.strokeStyle = P.dead;
+          ctx.setLineDash([4 * this.dpr, 6 * this.dpr]);
+          ctx.lineWidth = this.dpr;
+          ctx.stroke();
+          ctx.setLineDash([]);
+          if (cell.label && this.mode === 'interactive') {
+            ctx.font = `${fontPx}px "IBM Plex Mono", monospace`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = P.deadLabel;
+            ctx.fillText(cell.label + (cell.role === 'healer' ? ' · DOWN' : ' · dead'), c.x, c.y + cell.baseR + 22 * this.dpr);
+          }
+          continue;
+        }
+
+        const pts = cell.membrane(t, w, h, this.wobble);
+        const grow = cell.scale < 1 ? cell.scale : 1;
+        const R = cell.baseR * grow;
+        const col = cell.color();
+
+        const g = ctx.createRadialGradient(c.x, c.y, R * 0.15, c.x, c.y, R * 1.15);
+        g.addColorStop(0, col + '2b');
+        g.addColorStop(0.75, col + '16');
+        g.addColorStop(1, col + '00');
+        ctx.beginPath();
+        tracePath(ctx, pts);
+        ctx.fillStyle = g;
+        ctx.fill();
+
+        ctx.strokeStyle = col + (this.mode === 'interactive' ? '90' : '5e');
+        ctx.lineWidth = 1.2 * this.dpr;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(
+          c.x + Math.sin(t * 0.0005 + cell.phase) * R * 0.12,
+          c.y + Math.cos(t * 0.0004 + cell.phase) * R * 0.12,
+          Math.max(2, R * 0.1), 0, TAU);
+        ctx.fillStyle = col + 'b3';
+        ctx.fill();
+
+        if (cell.label && this.mode === 'interactive') {
+          ctx.font = `${fontPx}px "IBM Plex Mono", monospace`;
+          ctx.textAlign = 'center';
+          ctx.fillStyle = P.label;
+          ctx.fillText(cell.label + (cell.role === 'healer' ? ' ♥' : ''), c.x, c.y + cell.baseR + 22 * this.dpr);
+        }
+      }
+
+      for (const p of this.particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2 * this.dpr * p.life, 0, TAU);
+        ctx.fillStyle = p.color + Math.floor(p.life * 200).toString(16).padStart(2, '0');
+        ctx.fill();
+      }
+    }
+
+    drawKernel(cell, t) {
+      const { ctx, w, h } = this;
+      const P = pal();
+      const c = cell.center(w, h);
+      const R = cell.baseR;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, R, 0, TAU);
+      ctx.strokeStyle = `rgba(${P.kernel},0.55)`;
+      ctx.lineWidth = 1.4 * this.dpr;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, R * 0.55, 0, TAU);
+      ctx.fillStyle = `rgba(${P.kernel},0.12)`;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, R + 7 * this.dpr + Math.sin(t * 0.001) * 1.5 * this.dpr, 0, TAU);
+      ctx.strokeStyle = `rgba(${P.kernel},0.14)`;
+      ctx.lineWidth = this.dpr;
+      ctx.stroke();
+      if (this.mode === 'interactive') {
+        ctx.font = `${Math.round(11 * this.dpr)}px "IBM Plex Mono", monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = P.label;
+        ctx.fillText('kernel · ring 0', c.x, c.y + R + 24 * this.dpr);
+      }
+    }
+  }
+
+  window.ArkaneCells = { CellField, pal };
+})();
+</script>
+
+<script>
+/* ============ Arkane Organism — app ============ */
+(function () {
+  'use strict';
+
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = s => document.querySelector(s);
+  const sleep = ms => REDUCED ? Promise.resolve() : new Promise(r => setTimeout(r, ms));
+
+  /* ---------- WAL: page state, survives the plug ---------- */
+  const WAL_KEY = 'arkane_wal';
+  function walRead() {
+    try { return JSON.parse(localStorage.getItem(WAL_KEY)) || {}; } catch { return {}; }
+  }
+  function walWrite(patch) {
+    const s = Object.assign(walRead(), patch);
+    try { localStorage.setItem(WAL_KEY, JSON.stringify(s)); } catch (e) {}
+    return s;
+  }
+  function stateHash() {
+    const str = JSON.stringify(walRead());
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return (h >>> 0).toString(16).padStart(8, '0');
+  }
+
+  let respawns = walRead().respawns || 0;
+  const plugged = sessionStorage.getItem('arkane_plug') === '1';
+  sessionStorage.removeItem('arkane_plug');
+
+  /* ---------- theme toggle ---------- */
+  const themeBtn = $('#theme-btn');
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+  function renderThemeBtn() {
+    const dark = document.documentElement.dataset.theme === 'dark';
+    themeBtn.textContent = dark ? '◐ dark' : '◑ light';
+    themeBtn.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+    if (themeMeta) themeMeta.content = dark ? '#0d0c0a' : '#f3eee3';
+  }
+  renderThemeBtn();
+  themeBtn.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('arkane_theme', next); } catch (e) {}
+    renderThemeBtn();
+    hud.sys('SYS_CAP_DERIVE');
+  });
+
+  /* ---------- HUD ---------- */
+  const hud = (() => {
+    const up = $('#hud-up'), cellsEl = $('#hud-cells'), sysEl = $('#hud-sys');
+    const t0 = performance.now();
+    setInterval(() => {
+      const s = Math.floor((performance.now() - t0) / 1000);
+      up.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+    }, 1000);
+    let flashTimer = null;
+    return {
+      sys(name) {
+        sysEl.textContent = name;
+        sysEl.classList.add('flash');
+        clearTimeout(flashTimer);
+        flashTimer = setTimeout(() => sysEl.classList.remove('flash'), 350);
+      },
+      cells(alive, total) { cellsEl.textContent = alive + '/' + total; },
+    };
+  })();
+
+  let lastScrollSys = 0;
+  addEventListener('scroll', () => {
+    const now = performance.now();
+    if (now - lastScrollSys > 600) { lastScrollSys = now; hud.sys('SYS_WAIT'); }
+  }, { passive: true });
+  addEventListener('click', e => {
+    if (e.target.closest('#play-canvas, #plug, #boot, #theme-btn')) return;
+    hud.sys('SYS_IPC_CALL');
+  });
+
+  /* ---------- boot sequence ---------- */
+  const BOOT_LINES = [
+    'arkane-kernel v0.21 · x86_64 · <span class="hl">exokernel</span>',
+    '[0.000] trust: whitelist verified · root ed25519 <span class="ok">✓</span>',
+    plugged ? '[0.002] <span class="warn">wal: unclean shutdown detected · replaying …</span>' : null,
+    plugged ? '[0.006] wal: state restored · #' + stateHash() + ' <span class="ok">✓</span>' : null,
+    '[0.009] smp: 4 cores online',
+    '[0.011] blob: boot_reconstruct · roots warmed',
+    '[0.013] spawn cell 10 <span class="hl">gw-admin</span>    sig <span class="ok">✓</span>',
+    '[0.015] spawn cell 11 <span class="hl">storage</span>     sig <span class="ok">✓</span>',
+    '[0.018] spawn cell 15 <span class="hl">gw-public</span>   sig <span class="ok">✓</span>',
+    '[0.020] spawn cell 16 <span class="hl">gw-mcp</span>      sig <span class="ok">✓</span>',
+    '[0.022] spawn cell 17 <span class="hl">supervisor</span>  sig <span class="ok">✓</span>',
+    '[0.023] spawn cell 18 <span class="hl">keystore</span>    sig <span class="ok">✓</span> · net-free · KEK ram-only',
+    '[0.026] sched: preemptive · time slices · static core partitions',
+    '[0.028] audit: hash chain rooted · every spawn a block · mirror follows',
+    '[0.031] apply: <span class="hl">inference</span> sig <span class="ok">✓</span> · model mapped ro',
+    '[0.034] apply: <span class="hl">tool-echo</span> sig <span class="ok">✓</span>',
+    '[0.036] obs: per-cell ticks · log rings · trace ids <span class="ok">live</span>',
+    '[0.038] seal: app-data encrypted at rest · <span class="ok">strings store.img</span> finds no plaintext',
+    'arkane: cluster ready · <span class="ok">0 drift</span> · <span class="ok">mirror in sync</span>',
+  ].filter(Boolean);
+
+  async function boot() {
+    const overlay = $('#boot'), log = $('#boot-log');
+    if (REDUCED) { finishBoot(); return; }
+    let skipped = false;
+    overlay.addEventListener('click', () => { skipped = true; }, { once: true });
+    for (const line of BOOT_LINES) {
+      if (skipped) break;
+      log.innerHTML += line + '\n';
+      await sleep(plugged && line.includes('wal:') ? 330 : 130);
+    }
+    if (!skipped) await sleep(420);
+    finishBoot();
+  }
+  function finishBoot() {
+    $('#boot').classList.add('off');
+    document.documentElement.classList.add('booted');
+    if (plugged) afterReboot();
+  }
+
+  /* ---------- spawn strips ---------- */
+  const SIG = () => Math.random().toString(16).slice(2, 10);
+  const stripIO = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      stripIO.unobserve(e.target);
+      e.target.closest('.chapter').classList.add('on');
+      hud.sys('SYS_CELL_SPAWN');
+      typeStrip(e.target, `▸ spawn cell ${e.target.dataset.cell} · sig <span class="ok">✓</span> ed25519 · blake3:${SIG()}…`);
+    }
+  }, { threshold: 0.25, rootMargin: '0px 0px -60px 0px' });
+  document.querySelectorAll('.spawn-strip').forEach(s => stripIO.observe(s));
+
+  async function typeStrip(el, html) {
+    if (REDUCED) { el.innerHTML = html; return; }
+    const plain = html.replace(/<[^>]+>/g, '');
+    for (let i = 1; i <= plain.length; i += 3) {
+      el.textContent = plain.slice(0, i);
+      await sleep(14);
+    }
+    el.innerHTML = html;
+  }
+
+  /* ---------- hero field ---------- */
+  new ArkaneCells.CellField($('#hero-canvas'), {
+    mode: 'ambient',
+    wobble: 0.05,
+    drift: 0.022,
+    cells: [
+      { x: 0.16, y: 0.30, r: 90,  color: 'sage'  },
+      { x: 0.84, y: 0.26, r: 70,  color: 'ice'   },
+      { x: 0.10, y: 0.74, r: 60,  color: 'coral' },
+      { x: 0.88, y: 0.70, r: 100, color: 'sage'  },
+      { x: 0.50, y: 0.88, r: 55,  color: 'sand'  },
+      { x: 0.62, y: 0.12, r: 48,  color: 'coral' },
+    ],
+  });
+
+  /* ---------- playground with honest healer mechanics ---------- */
+  const PLAY_TOTAL = 7;
+  let alive = PLAY_TOTAL;
+  let healerDown = false;
+  let supervisorDown = false;
+  const pendingDrift = [];
+  const statRespawns = $('#stat-respawns');
+  const statHealer = $('#stat-healer');
+  const statDrift = $('#stat-drift');
+  statRespawns.textContent = respawns;
+
+  function setHealer(state) {            // 'online' | 'down' | 'restoring'
+    healerDown = state !== 'online';
+    statHealer.textContent = state === 'online' ? 'online' : state === 'down' ? 'DOWN' : 'restoring…';
+    statHealer.className = state === 'online' ? 'ok' : 'bad';
+  }
+  function setDrift() { statDrift.textContent = pendingDrift.length; }
+  const playStatus = $('#play-status');
+  function say(msg) { playStatus.textContent = msg; }
+
+  function countRespawn() {
+    respawns++;
+    statRespawns.textContent = respawns;
+    walWrite({ respawns });
+  }
+
+  const playField = new ArkaneCells.CellField($('#play-canvas'), {
+    mode: 'interactive',
+    wobble: 0.06,
+    drift: 0.012,
+    cells: [
+      { x: 0.50, y: 0.46, r: 30, color: 'sage',  label: 'kernel',     role: 'kernel' },
+      { x: 0.18, y: 0.30, r: 62, color: 'sage',  label: 'gw-admin',   role: 'healer' },
+      { x: 0.36, y: 0.14, r: 38, color: 'sand',  label: 'supervisor', role: 'supervisor' },
+      { x: 0.38, y: 0.76, r: 56, color: 'ice',   label: 'gw-public' },
+      { x: 0.64, y: 0.22, r: 54, color: 'ice',   label: 'gw-mcp' },
+      { x: 0.84, y: 0.52, r: 66, color: 'coral', label: 'inference' },
+      { x: 0.15, y: 0.70, r: 50, color: 'sand',  label: 'storage' },
+      { x: 0.66, y: 0.78, r: 44, color: 'sage',  label: 'tool-echo' },
+    ],
+    onEvent(type, cell) {
+      if (type === 'crash') {
+        alive--;
+        hud.cells(alive, PLAY_TOTAL);
+        say(cell.label + ' crashed — ' + (alive) + ' of ' + PLAY_TOTAL + ' cells alive');
+        if (cell.role === 'healer') {
+          // the healer itself is gone.  Its watcher is the tiny
+          // supervisor cell: on its next heartbeat it replays the
+          // signed boot recipe (SYS_CELL_RESPAWN_BOOT) — the pulse
+          // lands only after the healer reloaded + verified its state.
+          // With the supervisor dead there is no watcher left: the
+          // healer stays down and drift accumulates (truthful — a
+          // mutual-supervision pair is a named roadmap trigger).
+          setHealer('down');
+          hud.sys('SYS_CELL_STOP');
+          setTimeout(() => hud.sys('HEALER_DOWN'), 600);
+          if (!supervisorDown) {
+            setTimeout(() => {
+              hud.sys('SYS_CELL_RESPAWN_BOOT');
+              setHealer('restoring');
+              const sup = playField.cells.find(c => c.role === 'supervisor');
+              playField.pulse(sup, cell, { kind: 'kernel', duration: 3700, onArrive: () => playField.revive(cell) });
+            }, 2800);
+            setTimeout(() => hud.sys('STATE_RELOAD_VERIFY'), 4600);
+          }
+        } else if (cell.role === 'supervisor') {
+          // the supervisor has no supervisor.  It stays dead until a
+          // reboot — and while it is down, a dead healer stays down.
+          supervisorDown = true;
+          hud.sys('SYS_CELL_STOP');
+          setTimeout(() => hud.sys('SUPERVISOR_DOWN'), 600);
+        } else {
+          hud.sys('SYS_CELL_STOP');
+          if (healerDown) {
+            // no healer online — the dead cell must wait as pending drift
+            pendingDrift.push(cell);
+            setDrift();
+            setTimeout(() => hud.sys('DRIFT_UNHEALED'), 600);
+          } else {
+            setTimeout(() => { if (!healerDown) hud.sys('HEALER_DRIFT_DEAD'); }, 700);
+            setTimeout(() => {
+              // the healer may have died while this respawn was queued —
+              // then the cell joins the drift backlog and waits too
+              if (cell.alive) return;
+              if (healerDown) {
+                if (!pendingDrift.includes(cell)) { pendingDrift.push(cell); setDrift(); }
+                hud.sys('DRIFT_UNHEALED');
+              } else {
+                const healer = playField.cells.find(c => c.role === 'healer');
+                playField.pulse(healer, cell, { kind: 'heal', onArrive: () => playField.revive(cell) });
+              }
+            }, 800 + Math.random() * 400);
+          }
+        }
+      } else if (type === 'respawn') {
+        alive++;
+        hud.cells(alive, PLAY_TOTAL);
+        countRespawn();
+        say(cell.label + ' respawned — ' + alive + ' of ' + PLAY_TOTAL + ' cells alive');
+        hud.sys('SYS_CELL_SPAWN');
+        if (cell.role === 'healer') {
+          setHealer('online');
+          // back online: work through the backlog, cell by cell
+          pendingDrift.splice(0).forEach((dead, i) => {
+            setTimeout(() => {
+              hud.sys('HEALER_DRIFT_DEAD');
+              playField.pulse(cell, dead, { kind: 'heal', onArrive: () => { playField.revive(dead); setDrift(); } });
+            }, 600 + i * 420);
+          });
+          setDrift();
+        }
+      } else if (type === 'kernel-denied') {
+        hud.sys('SYS_ERR_DENIED');
+        say('the kernel refuses to stop itself');
+      } else if (type === 'select') {
+        say(cell.label + ' — ' + (cell.alive ? 'running. press Enter to crash it' : 'dead'));
+      }
+    },
+  });
+
+  /* ---------- anatomy: click a component, read the truth ---------- */
+  (function anatomy() {
+    const info = $('#arch-info');
+    const nodes = document.querySelectorAll('#arch-stack .node');
+    const TEXTS = {
+      arkctl: ['// arkctl — operator CLI',
+        'One static binary. <span class="mono">validate · lint · render · diff · hash</span> offline; <span class="mono">apply</span> over mTLS + HTTP/2 + gRPC; <span class="mono">keys</span> manages the signer lifecycle — init, rotate with grace period, revoke. Since v0.20 it is also the app lifecycle: <span class="mono">bundle pack · app install · image build · image verify</span> — signed bundles in, a signed OS image out — and <span class="mono">dashboard</span>, a console over the same RPCs — read-only views plus, since v0.21, a token-gated cell stop.',
+        'Manifests are YAML, fuzzed with 1M+ adversarial inputs. The manifest fingerprint you compute locally round-trips with what the control plane saw — you can prove which state was applied.'],
+      gwadmin: ['// gw-admin — control plane & ACP healer',
+        'The control plane is not a kernel service — it is a cell like any other, with no special power beyond an Authority capability. It terminates mTLS, speaks HTTP/2 + gRPC, diffs desired vs. observed state and drives spawn / map / start.',
+        'The same cell is the <b>ACP healer</b>: it probes cell status, detects drift and respawns dead cells from their signed images. The healer itself is watched by a tiny <b>supervisor cell</b> that replays its signed boot recipe if it dies. If gw-admin is ever compromised, the kernel contract check still bounds it — it cannot grant anything the target image does not declare.'],
+      gwpublic: ['// gw-public — human-facing gateway',
+        'The OpenAI-compatible endpoint (<span class="mono">/v1/chat/completions</span>) and the web apps (a notes app is the first) as one cell — live since v0.17. Network cards exist only in the three gateways, so every byte of traffic crosses one of exactly three audited membranes; workloads are never reachable directly.'],
+      gwmcp: ['// gw-mcp — MCP tool host',
+        'One MCP endpoint for agents; the tools behind it run in contracted cells, discovered live instead of from a static registry — one cell can serve a single tool or a whole family. A tool that tries to exfiltrate hits <span class="mono">SYS_ERR_RIGHTS</span>, dies alone, leaves an audit trail — and the agent keeps running.'],
+      inference: ['// inference cell',
+        'A real language model on its own <span class="mono">no_std</span> engine, token-identical to the reference implementation. The weights are a content-addressed, read-only mapping shared across cells — RAM dedup for free.',
+        'The cell holds no network capability. It can read its weights and answer over the gateway — structurally nothing else.'],
+      storage: ['// persistence cell',
+        'Durability lives in userspace: this cell mirrors the control-plane state and the Blake3-chained write-ahead log to its own virtio-blk disk and re-warms the kernel blob table after a reboot. <span class="mono">apply → reboot → state intact</span>, no re-apply — demonstrated end-to-end.'],
+      tools: ['// tool cells',
+        'Tools run in hardware-isolated cells with their own signed contracts (<span class="mono">tool-echo</span> is the first; one cell may serve several related tools). Tool cells cannot see each other, cannot see the model, cannot see the network — they see exactly the IPC channel gw-mcp granted them.'],
+      kernel: ['// exokernel',
+        'Capability check, memory mapping, IRQ routing, IPC — and since v0.18 a preemptive scheduler: time slices per cell, four cores, each cell statically partitioned onto exactly one. Nothing else — no drivers (one narrow, written-down exception: the durable root table), no network stack, no policy. About 13,000 lines of Rust.',
+        'A core can even be owned <b>exclusively</b> — declared in the signed contract, granted in the manifest, enforced at spawn: no other cell ever enters it. Because everything that changes lives in cells, the kernel almost never needs an update — and a dead network stack is a cell respawn, not a reboot.'],
+      hw: ['// hardware',
+        'virtio-net and virtio-blk are driven from cells via MSI-X — no interrupt storms, no drivers in the kernel. IOMMU for DMA protection and TPM-anchored trust are the v0.24 hardware milestone, required before 1.0.'],
+    };
+    nodes.forEach(n => n.addEventListener('click', () => {
+      nodes.forEach(m => m.classList.remove('sel'));
+      n.classList.add('sel');
+      const t = TEXTS[n.dataset.k];
+      info.innerHTML = '<h3>' + t[0] + '</h3>' + t.slice(1).map(p => '<p>' + p + '</p>').join('');
+      hud.sys('SYS_CAP_BIND');
+    }));
+  })();
+
+  /* ---------- terminal: the audited path, and the path that doesn't exist ---------- */
+  const TERM_SCRIPT = [
+    { t: 'cmd', s: `curl arkane:8081/v1/chat/completions \\\n    -d '{"messages":[{"role":"user","content":"Once upon a time…"}]}'` },
+    { t: 'pause', ms: 350 },
+    { t: 'out', s: '<span class="dim">gw-public   one of three audited gateways · request logged · #4f2a91c3</span>' },
+    { t: 'out', s: '<span class="route">gw-public → SYS_IPC_CALL → inference</span>' },
+    { t: 'out', s: '<span class="dim">inference   computes · greedy · token-identical to reference</span>' },
+    { t: 'out', s: '<span class="route">inference → SYS_IPC_REPLY → gw-public</span><span class="dim">   ← its only exit</span>' },
+    { t: 'out', s: '<span class="deny">inference → internet                     ✗ path does not exist</span>' },
+    { t: 'pause', ms: 500 },
+    { t: 'ans', s: '“…there was a little boy and his dream.”' },
+  ];
+
+  /* the getit terminal: real commands, real output shapes — from clone to
+     running system.  Hashes are abbreviated; keys are per-checkout (v0.15). */
+  const GETIT_SCRIPT = [
+    { t: 'cmd', s: 'git clone https://github.com/arkane-studio/arkane-os && cd arkane-os && make image' },
+    { t: 'pause', ms: 300 },
+    { t: 'out', s: '<span class="dim">==> make image: v0.21-d50ccb3 → dist-image/arkane-os-v0.21-d50ccb3</span>' },
+    { t: 'out', s: '<span class="dim">built OS image · kernel + 27 baked cells + manifest, signed ed25519 · 7 files</span>' },
+    { t: 'cmd', s: 'arkctl image verify dist-image/arkane-os-v0.21-d50ccb3' },
+    { t: 'out', s: 'OK  dist-image/arkane-os-v0.21-d50ccb3\n<span class="dim">  version         v0.21-d50ccb3\n  signer          f778… </span><span class="route">(whitelisted)</span><span class="dim">\n  kernel blake3   f062…\n  cells baked     27</span>' },
+    { t: 'cmd', s: 'dist-image/arkane-os-v0.21-d50ccb3/qemu-run.sh' },
+    { t: 'out', s: '[smp] 4 cores online · cluster ready\n<span class="dim">gw-admin :9000 mTLS · chat :8081 · mcp :8082</span>' },
+    { t: 'pause', ms: 350 },
+    { t: 'cmd', s: 'arkctl app install spin' },
+    { t: 'out', s: '<span class="dim">installing \'spin\' from apps/spin.arkbundle (content-address 51c9…)</span>\nApply ok: 2 ops completed' },
+    { t: 'cmd', s: 'arkctl app install shady-vendor.arkbundle' },
+    { t: 'out', s: '<span class="deny">bundle verify failed (refusing to install): SignerNotAllowed</span>' },
+    { t: 'pause', ms: 400 },
+    { t: 'cmd', s: 'arkctl dashboard' },
+    { t: 'out', s: '<span class="route">serving http://127.0.0.1:8090/</span> <span class="dim">· proxying gw-admin (read-only)</span>' },
+    { t: 'ans', s: 'Open it — the first picture of the running system.' },
+  ];
+
+  function armTerm(sel, script) {
+    let started = false;
+    const el = $(sel);
+    new IntersectionObserver((es, io) => {
+      if (!es.some(e => e.isIntersecting) || started) return;
+      started = true; io.disconnect();
+      runTermScript(el, script);
+    }, { threshold: 0.4 }).observe(el);
+  }
+  armTerm('#term-body', TERM_SCRIPT);
+  armTerm('#getit-body', GETIT_SCRIPT);
+
+  async function runTermScript(body, script) {
+    for (const step of script) {
+      if (step.t === 'pause') { await sleep(step.ms); continue; }
+      if (step.t === 'cmd') {
+        const line = document.createElement('div');
+        line.innerHTML = '<span class="p">$</span> ';
+        const span = document.createElement('span');
+        const cur = document.createElement('span');
+        cur.className = 'tcursor';
+        line.append(span, cur);
+        body.appendChild(line);
+        if (REDUCED) span.textContent = step.s;
+        else for (const ch of step.s) { span.textContent += ch; await sleep(ch === '\n' ? 50 : 13 + Math.random() * 20); }
+        await sleep(250);
+        cur.remove();
+        hud.sys('SYS_IPC_CALL');
+      } else if (step.t === 'ans') {
+        const div = document.createElement('div');
+        div.className = 'ans';
+        body.appendChild(div);
+        if (REDUCED) div.textContent = step.s;
+        else for (const ch of step.s) { div.textContent += ch; await sleep(22); }
+      } else {
+        const div = document.createElement('div');
+        div.innerHTML = step.s;
+        body.appendChild(div);
+        if (!REDUCED) {
+          div.style.opacity = '0';
+          div.style.transition = 'opacity .4s';
+          requestAnimationFrame(() => div.style.opacity = '1');
+          await sleep(380);
+        }
+      }
+    }
+  }
+
+  /* ---------- pull the plug ---------- */
+  $('#plug').addEventListener('click', async () => {
+    hud.sys('SYS_CELL_STOP');
+    walWrite({
+      respawns,
+      plugs: (walRead().plugs || 0) + 1,
+      scrollY: Math.round(scrollY),
+    });
+    sessionStorage.setItem('arkane_plug', '1');
+    $('#powerdown').classList.add('on');
+    await new Promise(r => setTimeout(r, REDUCED ? 80 : 800));
+    location.reload();
+  });
+
+  function afterReboot() {
+    const s = walRead();
+    if (s.scrollY) requestAnimationFrame(() => scrollTo(0, s.scrollY));
+    const banner = $('#restored');
+    banner.hidden = false;
+    banner.className = 'mono';
+    banner.textContent = `state restored · #${stateHash()} · respawns ${s.respawns || 0} · power cuts ${s.plugs || 0}×`;
+    hud.sys('WAL_REPLAY_OK');
+  }
+
+  /* ---------- plankton: fine drifting life across the whole page ---------- */
+  (function plankton() {
+    const canvas = $('#plankton');
+    const ctx = canvas.getContext('2d');
+    const dpr = Math.min(devicePixelRatio || 1, 1.5);
+    let W, H;
+    function size() {
+      W = canvas.width = Math.round(innerWidth * dpr);
+      H = canvas.height = Math.round(innerHeight * dpr);
+    }
+    size();
+    addEventListener('resize', size);
+
+    const N = innerWidth < 700 ? 105 : 265;
+    const dots = Array.from({ length: N }, () => ({
+      x: Math.random(),                  // 0..1 of width
+      y: Math.random() * 3,              // 0..3 viewport-heights of virtual space
+      depth: 0.25 + Math.random() * 0.75,
+      r: 0.6 + Math.random() * 1.6,
+      seed: Math.random() * 1000,
+      vx: 0, vy: 0,
+    }));
+    const ripples = [];
+    const mouse = { x: -1e4, y: -1e4 };
+
+    addEventListener('pointermove', e => { mouse.x = e.clientX * dpr; mouse.y = e.clientY * dpr; }, { passive: true });
+    addEventListener('click', e => {
+      if (e.target.closest('#boot, #plug')) return;
+      ripples.push({ x: e.clientX * dpr, y: e.clientY * dpr, r: 0, life: 1 });
+    });
+
+    if (REDUCED) { drawStatic(); return; }
+    function drawStatic() {
+      const P = ArkaneCells.pal();
+      ctx.clearRect(0, 0, W, H);
+      for (const d of dots) {
+        ctx.beginPath();
+        ctx.arc(d.x * W, (d.y % 1) * H, d.r * dpr, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${P.plankton},${0.16 + d.depth * 0.18})`;
+        ctx.fill();
+      }
+    }
+
+    let last = performance.now();
+    let running = true;
+    document.addEventListener('visibilitychange', () => {
+      running = !document.hidden;
+      if (running) { last = performance.now(); requestAnimationFrame(tick); }
+    });
+
+    function tick(t) {
+      if (!running) return;
+      const dt = Math.min(50, t - last);
+      last = t;
+      const P = ArkaneCells.pal();
+      ctx.clearRect(0, 0, W, H);
+
+      const scroll = scrollY * dpr;
+      for (const d of dots) {
+        // autonomous drift
+        d.x += Math.sin(t * 0.00008 + d.seed) * 0.00002 * dt + d.vx * dt * 0.001;
+        d.y += (0.0000022 + Math.cos(t * 0.00006 + d.seed * 2) * 0.0000012) * dt * d.depth + d.vy * dt * 0.001;
+        d.vx *= 0.96; d.vy *= 0.96;
+        if (d.x > 1.02) d.x -= 1.04; if (d.x < -0.02) d.x += 1.04;
+
+        // screen position with depth parallax against scroll
+        const span = H * 3;
+        let sy = ((d.y * H - scroll * d.depth * 0.35) % span + span) % span - H * 0.5;
+        const sx = d.x * W;
+        if (sy < -20 || sy > H + 20) continue;
+
+        // gentle swirl around the mouse
+        const mdx = sx - mouse.x, mdy = sy - mouse.y;
+        const md = Math.hypot(mdx, mdy);
+        const reach = 170 * dpr;
+        if (md < reach && md > 1) {
+          const f = (1 - md / reach) * 0.012;
+          d.vx += (-mdy / md) * f * d.depth;       // tangential = swirl
+          d.vy += (mdx / md) * f * d.depth;
+          d.vx += (mdx / md) * f * 0.45;           // slight repel
+          d.vy += (mdy / md) * f * 0.45;
+        }
+
+        ctx.beginPath();
+        ctx.arc(sx, sy, d.r * dpr * (0.7 + d.depth * 0.5), 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${P.plankton},${0.14 + d.depth * 0.20})`;
+        ctx.fill();
+      }
+
+      // click ripples: a soft membrane wave
+      for (let i = ripples.length - 1; i >= 0; i--) {
+        const r = ripples[i];
+        r.r += dt * 0.22 * dpr;
+        r.life -= dt * 0.0011;
+        if (r.life <= 0) { ripples.splice(i, 1); continue; }
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${P.plankton},${r.life * 0.22})`;
+        ctx.lineWidth = dpr;
+        ctx.stroke();
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  })();
+
+  /* ---------- cursor ring ---------- */
+  (function cursorRing() {
+    if (REDUCED || matchMedia('(pointer: coarse)').matches) return;
+    const ring = $('#cursor');
+    let tx = -100, ty = -100, x = -100, y = -100, seen = false;
+    addEventListener('pointermove', e => {
+      tx = e.clientX; ty = e.clientY;
+      if (!seen) { seen = true; x = tx; y = ty; ring.style.opacity = '0.55'; }
+      const hot = e.target.closest('a, button, #play-canvas');
+      ring.classList.toggle('hot', !!hot);
+    }, { passive: true });
+    (function follow() {
+      x += (tx - x) * 0.13;
+      y += (ty - y) * 0.13;
+      ring.style.transform = `translate(${x}px, ${y}px)`;
+      requestAnimationFrame(follow);
+    })();
+  })();
+
+  /* ---------- responsive smooth scroll + parallax (CDN-dependent, graceful) ---------- */
+  function initMotionLibs() {
+    if (REDUCED) return;
+    if (window.Lenis) {
+      // Native scrolling is consistent across Mac trackpads and discrete mouse
+      // wheels; Lenis still remains available for non-wheel behavior.
+      const lenis = new Lenis({ smoothWheel: false });
+      (function raf(t) { lenis.raf(t); requestAnimationFrame(raf); })();
+    }
+    if (window.gsap && window.ScrollTrigger) {
+      gsap.registerPlugin(ScrollTrigger);
+      gsap.to('.hero-inner', {
+        y: -70, opacity: 0.25, ease: 'none',
+        scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true },
+      });
+      gsap.to('#hero-canvas', {
+        y: 110, ease: 'none',
+        scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true },
+      });
+      // h2 is inside .ch-inner, which the chapter reveal already fades in — a
+      // second, differently-triggered opacity tween on the child only fights it.
+      document.querySelectorAll('.playground-frame, .term-frame, .contract').forEach(el => {
+        // kept under the 22px caption margin below these figures, so the
+        // parallax never eats the gap between a code block and its caption
+        gsap.fromTo(el, { y: 16 }, {
+          y: -14, ease: 'none',
+          scrollTrigger: { trigger: el, start: 'top bottom', end: 'bottom top', scrub: true },
+        });
+      });
+    }
+  }
+
+  /* ---------- start ---------- */
+  boot();
+  addEventListener('load', initMotionLibs);
+})();
+</script>
+</body>
+</html>

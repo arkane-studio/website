@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roadmap — Arkane OS</title>
+<meta name="description" content="Milestones shipped and proven (v0.13 through v0.22 plus HA replica groups, load-balanced service routing and boot latency), and what comes next: a benchmark against Linux, SDK DX, ArkDB, multi-node.">
+<meta name="theme-color" content="#f3eee3">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Roadmap — Arkane OS">
+<meta property="og:description" content="Milestones shipped and proven (v0.13 through v0.22 plus HA replica groups, load-balanced service routing and boot latency), and what comes next: a benchmark against Linux, SDK DX, ArkDB, multi-node.">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%239db89a' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23e8927c'/%3E%3C/svg%3E">
+<script>
+  document.documentElement.classList.add('js');
+  (function () {
+    let t = null;
+    try { t = localStorage.getItem('arkane_theme'); } catch (e) {}
+    if (!t) t = 'light';
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav id="topnav" aria-label="Main">
+  <a class="nav-brand" href="index.html">arkane<span class="dot-k">.</span></a>
+  <div class="nav-tabs">
+      <a href="index.html">Overview</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="console.html">Console</a>
+      <a href="proof.html">Proof</a>
+      <a href="roadmap.html" aria-current="page">Roadmap</a>
+      <a href="getit.html">Get it</a>
+  </div>
+  <button id="theme-btn" type="button" aria-label="Switch theme">◐ dark</button>
+</nav>
+
+<main>
+
+<div class="page-head">
+  <div class="ch-inner narrow">
+    <div class="ch-no">Roadmap</div>
+    <h2>Every version a proof.</h2>
+    <p class="prose">Shipped means: tagged, with its acceptance gates green in
+    QEMU. Planned means planned — nothing below the line is claimed.</p>
+  </div>
+</div>
+
+<section class="chapter" id="chronicle">
+  <div class="spawn-strip" data-cell="chronicle"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">01 · Shipped</div>
+    <ul class="chron">
+      <li class="done"><span class="v">v0.13–14</span><span><b>Persistence</b> — Blake3 write-ahead log, crash recovery: apply → reboot → state intact<i class="dot" aria-hidden="true"></i></span></li>
+      <li class="done"><span class="v">v0.15–16</span><span><b>Trust &amp; contracts</b> — three-stage Ed25519 signature chain; two keys become law<i class="dot" aria-hidden="true"></i></span></li>
+      <li class="done"><span class="v">v0.17</span><span><b>AI workloads</b> — in-cell inference, chat API, MCP tool cells<i class="dot" aria-hidden="true"></i></span></li>
+      <li class="done"><span class="v">v0.18</span><span><b>Preemption &amp; multicore</b> — time slices, four cores, exclusive core ownership as a capability<i class="dot" aria-hidden="true"></i></span></li>
+      <li class="done"><span class="v">v0.19</span><span><b>Observability &amp; audit</b> — per-cell CPU time, log rings, request tracing, the tamper-evident audit chain<i class="dot" aria-hidden="true"></i></span></li>
+      <li class="done"><span class="v">v0.20</span><span><b>SDK &amp; app lifecycle</b> — signed app bundles, one-command install, the OS as a signed CI-built image<i class="dot" aria-hidden="true"></i></span></li>
+      <li class="done"><span class="v">v0.21</span><span><b>Data protection</b> — encryption at rest, a net-free keystore, credentials an app never holds<i class="dot" aria-hidden="true"></i></span></li>
+      <li class="done"><span class="v">v0.22</span><span><b>ACP Console</b> — browser login with roles, RBAC + CSRF on every write, lifecycle, topology, deploy with diff, value-free secrets<i class="dot" aria-hidden="true"></i></span></li>
+      <li class="done"><span class="v">+ HA</span><span><b>Replica groups</b> — <span class="mono">replicas: N</span>, rolling restarts, gate: never 0 replicas alive<i class="dot" aria-hidden="true"></i></span></li>
+      <li class="done"><span class="v">+ LB</span><span><b>Service routing</b> — round-robin in the gateways; 3 rollouts under fire, 802 req, 0 errors<i class="dot" aria-hidden="true"></i></span></li>
+      <li class="done"><span class="v">+ boot</span><span><b>Boot latency</b> — unattended convergence in 7.4 s, per-phase boot trace<i class="dot" aria-hidden="true"></i></span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="chapter" id="next">
+  <div class="spawn-strip" data-cell="next"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">02 · Planned — in this order</div>
+    <ul class="chron">
+      <li class="plan"><span class="v">next</span><span><b>Benchmark vs. Linux</b> — a native cell against a Linux process: latency p50/p99, throughput, syscall/IPC cost. Honest, no cherry-picking; the numbers go here when they exist</span></li>
+      <li class="plan"><span class="v">then</span><span><b>SDK developer experience</b> — from <span class="mono">arkctl new</span> to a running contracted cell with as little friction as possible</span></li>
+      <li class="plan"><span class="v">then</span><span><b>ArkDB</b> — a database as a contracted cell, benchmarked before claimed. Gated on the Linux benchmark going well</span></li>
+      <li class="plan"><span class="v">later</span><span><b>Multi-node</b> — replica groups spread across Arkane nodes; today HA means one machine</span></li>
+      <li class="plan"><span class="v">later</span><span><b>Hardware trust</b> — IOMMU, TPM; boot under 3 s. Required before 1.0</span></li>
+    </ul>
+    <p class="caption">The target today is QEMU — bare metal is a named trigger, not
+    a promise. That sentence is on this page on purpose.</p>
+  </div>
+</section>
+
+</main>
+
+<footer id="coda">
+  <p class="coda-line">What does not exist<br><em>cannot break.</em></p>
+  <div class="colophon"><a href="https://github.com/arkane-studio/arkane-os">github</a> &nbsp;·&nbsp; arkane@2026</div>
+</footer>
+
+<script src="cells.js"></script>
+<script src="site.js"></script>
+
+</body>
+</html>
