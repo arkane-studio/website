@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Roadmap — Arkane OS</title>
-<meta name="description" content="Milestones shipped and proven (v0.13 through v0.22 plus HA replica groups, load-balanced service routing and boot latency), and what comes next: a benchmark against Linux, SDK DX, ArkDB, multi-node.">
+<meta name="description" content="Milestones shipped and proven (v0.13 through v0.23 plus a measured benchmark against Linux), and what comes next: SDK DX, ArkDB, multi-node.">
 <meta name="theme-color" content="#f3eee3">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Roadmap — Arkane OS">
-<meta property="og:description" content="Milestones shipped and proven (v0.13 through v0.22 plus HA replica groups, load-balanced service routing and boot latency), and what comes next: a benchmark against Linux, SDK DX, ArkDB, multi-node.">
+<meta property="og:description" content="Milestones shipped and proven (v0.13 through v0.23 plus a measured benchmark against Linux), and what comes next: SDK DX, ArkDB, multi-node.">
 <meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -65,9 +65,10 @@
       <li class="done"><span class="v">v0.20</span><span><b>SDK &amp; app lifecycle</b> — signed app bundles, one-command install, the OS as a signed CI-built image<i class="dot" aria-hidden="true"></i></span></li>
       <li class="done"><span class="v">v0.21</span><span><b>Data protection</b> — encryption at rest, a net-free keystore, credentials an app never holds<i class="dot" aria-hidden="true"></i></span></li>
       <li class="done"><span class="v">v0.22</span><span><b>ACP Console</b> — browser login with roles, RBAC + CSRF on every write, lifecycle, topology, deploy with diff, value-free secrets<i class="dot" aria-hidden="true"></i></span></li>
-      <li class="done"><span class="v">+ HA</span><span><b>Replica groups</b> — <span class="mono">replicas: N</span>, rolling restarts, gate: never 0 replicas alive<i class="dot" aria-hidden="true"></i></span></li>
-      <li class="done"><span class="v">+ LB</span><span><b>Service routing</b> — round-robin in the gateways; 3 rollouts under fire, 802 req, 0 errors<i class="dot" aria-hidden="true"></i></span></li>
-      <li class="done"><span class="v">+ boot</span><span><b>Boot latency</b> — unattended convergence in 7.4 s, per-phase boot trace<i class="dot" aria-hidden="true"></i></span></li>
+      <li class="done"><span class="v">v0.23</span><span><b>HA replica groups</b> — <span class="mono">replicas: N</span>, rolling restarts, gate: never 0 replicas alive<i class="dot" aria-hidden="true"></i></span></li>
+      <li class="done"><span class="v">v0.23</span><span><b>Service routing</b> — round-robin in the gateways; 3 rollouts under fire, 802 req, 0 errors<i class="dot" aria-hidden="true"></i></span></li>
+      <li class="done"><span class="v">v0.23</span><span><b>Boot latency</b> — unattended convergence in 7.4 s, per-phase boot trace<i class="dot" aria-hidden="true"></i></span></li>
+      <li class="done"><span class="v">new</span><span><b>Benchmark vs. Linux</b> — measured, release builds, QEMU/TCG on both sides: p50 0.59&times; Linux on the no-IPC path, 0.68&ndash;1.44&times; with IPC; syscall 0.35&times;, IPC round-trip 0.65&times; of an AF_UNIX round-trip; first answer 3.4 s vs. 6.6 s. Emulated measurement — no hardware claim in either direction<i class="dot" aria-hidden="true"></i></span></li>
     </ul>
   </div>
 </section>
@@ -77,11 +78,10 @@
   <div class="ch-inner narrow">
     <div class="ch-no">02 · Planned — in this order</div>
     <ul class="chron">
-      <li class="plan"><span class="v">next</span><span><b>Benchmark vs. Linux</b> — a native cell against a Linux process: latency p50/p99, throughput, syscall/IPC cost. Honest, no cherry-picking; the numbers go here when they exist</span></li>
-      <li class="plan"><span class="v">then</span><span><b>SDK developer experience</b> — from <span class="mono">arkctl new</span> to a running contracted cell with as little friction as possible</span></li>
-      <li class="plan"><span class="v">then</span><span><b>ArkDB</b> — a database as a contracted cell, benchmarked before claimed. Gated on the Linux benchmark going well</span></li>
+      <li class="plan"><span class="v">next</span><span><b>SDK developer experience</b> — from <span class="mono">arkctl new</span> to a running contracted cell with as little friction as possible</span></li>
+      <li class="plan"><span class="v">then</span><span><b>ArkDB</b> — a database as a contracted cell, benchmarked before claimed. Gated on the Linux benchmark going well — the numbers are in; the call is the owner's</span></li>
       <li class="plan"><span class="v">later</span><span><b>Multi-node</b> — replica groups spread across Arkane nodes; today HA means one machine</span></li>
-      <li class="plan"><span class="v">later</span><span><b>Hardware trust</b> — IOMMU, TPM; boot under 3 s. Required before 1.0</span></li>
+      <li class="plan"><span class="v">later</span><span><b>Hardware trust</b> — IOMMU, TPM, bare metal; boot under 3 s. Post-1.0: version 1.0 means the finished AI OS proven on QEMU</span></li>
     </ul>
     <p class="caption">The target today is QEMU — bare metal is a named trigger, not
     a promise. That sentence is on this page on purpose.</p>
