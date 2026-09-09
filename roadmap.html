@@ -78,6 +78,7 @@
   <div class="ch-inner narrow">
     <div class="ch-no">02 · Planned — in this order</div>
     <ul class="chron">
+      <li class="done"><span class="v">new</span><span><b>IPC cost decomposition</b> — measured before optimising: copies and tick-waits ruled out (4.4%), the expensive block is park + return through the run loop; two hypothesised cheap fixes were built, measured at &minus;0.6% / &minus;0.0%, and honestly reverted. A faster switch mechanism needs its own ADR and a load-realistic measurement first<i class="dot" aria-hidden="true"></i></span></li>
       <li class="plan"><span class="v">next</span><span><b>SDK developer experience</b> — in progress: <span class="mono">arkctl new</span> now builds out of tree, <span class="mono">arkctl manifest fill</span> writes the image hash for you, and the common failure paths explain themselves; remaining ergonomics under review</span></li>
       <li class="plan"><span class="v">then</span><span><b>ArkDB</b> — a database as a contracted cell, benchmarked before claimed. Gated on the Linux benchmark going well — the numbers are in; the call is the owner's</span></li>
       <li class="plan"><span class="v">later</span><span><b>Multi-node</b> — replica groups spread across Arkane nodes; today HA means one machine</span></li>
