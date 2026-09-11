@@ -90,6 +90,26 @@ ipc round-trip     <span class="p">36850</span>   40864  <span class="dim">af_un
     figure was an emulation artefact: TCG's cost model, not Arkane's. It is named
     here rather than quietly dropped, because a measurement culture that only
     publishes the flattering revisions is not one.</p>
+    <p class="prose">The full serving path has a correction of its own. Its first
+    KVM run put Arkane at <b>5.5–10.8× Linux's latency</b>. Before optimising
+    anything, we decomposed it: <b>80–89% of that latency was our own debug
+    serial output</b>, written on every request. With it switched off, Arkane
+    serves at <b>0.98–1.34× Linux</b> — parity on the public tree, 1.2–1.35×
+    behind on the rest. Honest benchmarks find your own mistakes too.</p>
+    <div class="term-frame">
+      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">serving path · KVM · AMD 5700G · dev profile · boot-trace off · p50 arkane/linux</span></div>
+      <pre class="mono term-body" style="min-height:0"><span class="dim">                   R_p50   (&lt;1 = arkane faster)</span>
+public-tree        <span class="p">0.977</span>   <span class="dim">parity</span>
+static-json        1.224
+mcp-notes-search   1.285
+mcp-echo           1.344
+
+<span class="p">→ parity on public-tree · 1.2–1.35× behind elsewhere</span></pre>
+    </div>
+    <p class="caption">Same frame as above: one host, dev profile. Load was paced
+    at 50 req/s, and both sides held that rate (throughput ratio 1.0–1.15). Peak
+    capacity has not been measured yet. The tail is still wider, with p99 at
+    1.2–1.9× Linux. The remaining gap is real, and it is the next thing to work on.</p>
   </div>
 </section>
 
