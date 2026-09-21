@@ -246,6 +246,45 @@ hash to its stored id (content was modified)</span></pre>
   </div>
 </section>
 
+<!-- ============ ARKDB ============ -->
+<section class="chapter" id="arkdb">
+  <div class="spawn-strip" data-cell="arkdb"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">07 &middot; ArkDB vs. SQLite</div>
+    <h2>Read parity reached. The rest named, not hidden.</h2>
+    <p class="prose">ArkDB is a database built <i>with the SDK</i>, as a contracted
+    cell — and it was measured against SQLite running in a Linux guest on the same
+    host: KVM, Ryzen 5700G, release builds on both sides. The point lookup started
+    the sprint <b>1624&times; slower</b> and ended at <b>1.03&times;</b> — parity —
+    and it got there by decomposition rather than guesswork: 78 syscalls per read
+    collapsed into one batched syscall, then page cache + cursor, IPC slice
+    donation in the scheduler, KeyScan on the primary key, streamed select.
+    Scans remain <b>3.42&times;</b> slower, and that remainder is structural:
+    distributed B-tree descents against one contiguous leaf. Writes are
+    <b>18.6&times;</b> slower, of which <b>~92% is the durable root commit</b>
+    (ADR-025) — SQLite in an initramfs pays no persistence at all, so this is a
+    named asymmetry between two different promises, not a deficit we are hiding.
+    Optimisations that did not measure were reverted instead of shipped, and the
+    golden suite runs against real SQLite: identical semantics is the proof, the
+    numbers are only the price.</p>
+    <div class="term-frame">
+      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">arkdb v0.25 &middot; KVM &middot; AMD 5700G &middot; release both sides &middot; &times; sqlite, lower is better</span></div>
+      <pre class="mono term-body" style="min-height:0"><span class="dim">                    R      (1.0 = parity with sqlite)</span>
+kv_read  <span class="dim">point</span>      <span class="p">1.03</span>   <span class="dim">from 1624&times; at sprint start</span>
+scan                3.42   <span class="dim">structural: b-tree descents vs. one leaf</span>
+write              18.6    <span class="dim">~92% durable root commit (adr-025)</span>
+
+<span class="p">&rarr; lookup at parity &middot; write gap is persistence sqlite never paid</span></pre>
+    </div>
+    <p class="caption">The honest frame: SQLite ran <b>in the initramfs</b>, where a
+    commit never has to survive the machine — comparing it to a durable root commit
+    compares two different promises, and we say which. Every figure above is
+    gate-proven, and the golden suite against real SQLite is what makes the
+    comparison legitimate in the first place: <b>same semantics, then talk about
+    speed.</b></p>
+  </div>
+</section>
+
 </main>
 
 <footer id="coda">

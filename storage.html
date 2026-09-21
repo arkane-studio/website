@@ -86,8 +86,16 @@
     </div>
     <p class="caption">No double caching: the cell that owns the data owns its
     frames — there is no OS page cache underneath re-caching the same blocks.
-    That is the structural claim; the <b>speed</b> claim waits for the
-    <a href="roadmap.html" style="color:var(--sage)">benchmark</a>.</p>
+    That is the structural claim; the <b>speed</b> claim is made only where a
+    <a href="roadmap.html" style="color:var(--sage)">benchmark</a> has actually
+    been run — the first one is below.</p>
+    <p class="prose">The first real tenant of this layering is <b>ArkDB</b>
+    (<span class="mono">v0.25</span>), built with the SDK as a contracted cell and
+    measured against SQLite in a Linux guest on the same host: point lookups land
+    at <b>1.03&times;</b> — parity — while scans sit at 3.42&times; and writes at
+    18.6&times;, the latter ~92% durable root commit that SQLite in an initramfs
+    never pays. The numbers and the frame around them are
+    <a href="proof.html#arkdb" style="color:var(--sage)">on the proof page</a>.</p>
   </div>
 </section>
 
