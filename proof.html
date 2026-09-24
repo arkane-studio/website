@@ -251,30 +251,36 @@ hash to its stored id (content was modified)</span></pre>
   <div class="spawn-strip" data-cell="arkdb"></div>
   <div class="ch-inner narrow">
     <div class="ch-no">07 &middot; ArkDB vs. SQLite</div>
-    <h2>Read parity reached. The rest named, not hidden.</h2>
+    <h2>Faster than SQLite on point reads. The rest named, not hidden.</h2>
     <p class="prose">ArkDB is a database built <i>with the SDK</i>, as a contracted
     cell — and it was measured against SQLite running in a Linux guest on the same
     host: KVM, Ryzen 5700G, release builds on both sides. The point lookup started
-    the sprint <b>1624&times; slower</b> and ended at <b>1.03&times;</b> — parity —
+    the sprint <b>1624&times; slower</b>, reached parity at 1.03&times;, and now
+    stands at <b>0.79&times;</b> — <b>faster than SQLite</b> on point reads —
     and it got there by decomposition rather than guesswork: 78 syscalls per read
     collapsed into one batched syscall, then page cache + cursor, IPC slice
     donation in the scheduler, KeyScan on the primary key, streamed select.
-    Scans remain <b>3.42&times;</b> slower, and that remainder is structural:
-    distributed B-tree descents against one contiguous leaf. Writes are
-    <b>18.6&times;</b> slower, of which <b>~92% is the durable root commit</b>
+    Group commit is new: statements inside
+    <span class="mono">BEGIN..COMMIT</span> now cost <b>0.119</b> of a single
+    write (~8.4&times; cheaper) — and honestly, SQLite groups even harder at 0.04,
+    so per statement inside a transaction we sit at <b>53.6&times;</b>.
+    Scans remain <b>3.55&times;</b> slower, and that remainder is structural:
+    distributed B-tree descents against one contiguous leaf. Single writes are
+    <b>17.89&times;</b> slower, and that gap is the <b>durable root commit</b>
     (ADR-025) — SQLite in an initramfs pays no persistence at all, so this is a
     named asymmetry between two different promises, not a deficit we are hiding.
     Optimisations that did not measure were reverted instead of shipped, and the
     golden suite runs against real SQLite: identical semantics is the proof, the
     numbers are only the price.</p>
     <div class="term-frame">
-      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">arkdb v0.25 &middot; KVM &middot; AMD 5700G &middot; release both sides &middot; &times; sqlite, lower is better</span></div>
+      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">arkdb v0.25 &middot; KVM &middot; AMD 5700G &middot; release both sides &middot; &times; sqlite, lower is better &middot; arkdb_dd753ee_2026-09-24</span></div>
       <pre class="mono term-body" style="min-height:0"><span class="dim">                    R      (1.0 = parity with sqlite)</span>
-kv_read  <span class="dim">point</span>      <span class="p">1.03</span>   <span class="dim">from 1624&times; at sprint start</span>
-scan                3.42   <span class="dim">structural: b-tree descents vs. one leaf</span>
-write              18.6    <span class="dim">~92% durable root commit (adr-025)</span>
+kv_read  <span class="dim">point</span>      <span class="p">0.79</span>   <span class="dim">faster than sqlite &middot; 1624&times; at sprint start</span>
+scan                3.55   <span class="dim">structural: b-tree descents vs. one leaf</span>
+write    <span class="dim">single</span>    17.89   <span class="dim">durable root commit (adr-025)</span>
+txn      <span class="dim">per stmt</span>  53.6    <span class="dim">group commit 0.119 of single write &middot; sqlite: 0.04</span>
 
-<span class="p">&rarr; lookup at parity &middot; write gap is persistence sqlite never paid</span></pre>
+<span class="p">&rarr; lookup faster than sqlite &middot; write gap is persistence sqlite never paid</span></pre>
     </div>
     <p class="caption">The honest frame: SQLite ran <b>in the initramfs</b>, where a
     commit never has to survive the machine — comparing it to a durable root commit

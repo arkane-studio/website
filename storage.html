@@ -92,8 +92,8 @@
     <p class="prose">The first real tenant of this layering is <b>ArkDB</b>
     (<span class="mono">v0.25</span>), built with the SDK as a contracted cell and
     measured against SQLite in a Linux guest on the same host: point lookups land
-    at <b>1.03&times;</b> — parity — while scans sit at 3.42&times; and writes at
-    18.6&times;, the latter ~92% durable root commit that SQLite in an initramfs
+    at <b>0.79&times;</b> — faster than SQLite — while scans sit at 3.55&times; and
+    single writes at 17.89&times;, the latter the durable root commit that SQLite in an initramfs
     never pays. The numbers and the frame around them are
     <a href="proof.html#arkdb" style="color:var(--sage)">on the proof page</a>.</p>
   </div>
