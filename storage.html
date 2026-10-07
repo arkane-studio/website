@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Storage — Arkane OS</title>
-<meta name="description" content="No filesystem tower: the kernel multiplexes one block device, everything else — hash-addressed blobs, WAL, encryption — lives in cells. One audited virtio-blk driver instead of a storage stack to patch.">
+<meta name="description" content="No filesystem tower: the kernel multiplexes one block device, everything else — hash-addressed blobs, WAL, encryption — lives in cells. One audited virtio-blk driver instead of a storage stack to patch. Since v0.27: models larger than RAM, paged in on demand and Blake3-verified.">
 <meta name="theme-color" content="#f3eee3">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Storage — Arkane OS">
-<meta property="og:description" content="No filesystem tower: the kernel multiplexes one block device, everything else — hash-addressed blobs, WAL, encryption — lives in cells. One audited virtio-blk driver instead of a storage stack to patch.">
+<meta property="og:description" content="No filesystem tower: the kernel multiplexes one block device, everything else — hash-addressed blobs, WAL, encryption — lives in cells. One audited virtio-blk driver instead of a storage stack to patch. Since v0.27: models larger than RAM, paged in on demand and Blake3-verified.">
 <meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -119,11 +119,47 @@
   </div>
 </section>
 
+<!-- ============ LARGER THAN RAM (v0.27) ============ -->
+<section class="chapter" id="paging">
+  <div class="spawn-strip" data-cell="paging"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">03 &middot; Larger than RAM</div>
+    <h2>The model stays on disk until it is touched.</h2>
+    <p class="prose">Content addressing pays off a second time in
+    <span class="mono">v0.27</span>. A model blob no longer has to be loaded into
+    memory as a whole: it is mapped <b>on demand</b>, one <b>2 MiB window</b> at a
+    time. A page fault fetches the window from disk, the kernel checks it against
+    its <b>Blake3</b> hash, and only a verified window is mapped — read-only. When
+    a cell's working-set budget is full, its coldest windows are evicted
+    (FIFO, with a TLB shootdown) and fetched again if they are needed. A window
+    that has been tampered with on disk is refused: the cell dies, the system
+    does not.</p>
+    <div class="contract mono">
+      <div class="ct-head">v0.27 &middot; proven on KVM &middot; AMD 5700G</div>
+      <pre><span class="m">6 GiB</span>  model, run to completion under a <span class="m">4 GiB</span> ram budget
+<span class="m">~6 ms</span>  page-in p50 per 2 MiB window &middot; 104&ndash;114 MiB/s
+<span class="m">8/8 &middot; 4/4</span>  max_resident = budget, never more
+<span class="r">refused</span>  manipulated window &mdash; <span class="dim">cell dies cleanly, system lives</span></pre>
+    </div>
+    <p class="prose">Underneath, the <b>store format v4</b> describes blobs as
+    <b>extents</b> — contiguous runs on disk — instead of lists of single frames,
+    and records lengths in <b>48 bits</b>. That moves the format ceiling to
+    <b>256 TiB</b> per blob. The 256 MiB cap of earlier versions, and the 1 GiB of
+    <span class="mono">v0.25</span>, were limits of the format; this one is a
+    limit on paper that no workload is near.</p>
+    <p class="caption">The honest edge: 256 TiB is what the format can
+    <i>address</i>, not what has been tested — the largest model proven is
+    6 GiB. Paging from disk is a capacity claim, not a speed claim; the numbers
+    and the frame are <a href="proof.html#largerthanram" style="color:var(--sage)">on
+    the proof page</a>.</p>
+  </div>
+</section>
+
 <!-- ============ ENCRYPTION ============ -->
 <section class="chapter" id="atrest">
   <div class="spawn-strip" data-cell="atrest"></div>
   <div class="ch-inner narrow">
-    <div class="ch-no">03 · At rest</div>
+    <div class="ch-no">04 · At rest</div>
     <h2>Keys the app never holds.</h2>
     <p class="prose">Encryption at rest is layered, and we say by which layer.
     The <b>baseline</b> comes from your infrastructure: run Arkane as a VM on an
@@ -150,7 +186,7 @@
 <section class="chapter" id="driver">
   <div class="spawn-strip" data-cell="driver"></div>
   <div class="ch-inner narrow">
-    <div class="ch-no">04 · One driver</div>
+    <div class="ch-no">05 · One driver</div>
     <h2>One driver, not a zoo.</h2>
     <p class="prose">Arkane needs no storage-driver menagerie. It runs as a guest
     and sees <b>one virtio-blk device</b> — a single, tiny, audited driver.
@@ -170,7 +206,7 @@
 <section class="chapter" id="limits">
   <div class="spawn-strip" data-cell="limits"></div>
   <div class="ch-inner narrow">
-    <div class="ch-no">05 · Honest limits</div>
+    <div class="ch-no">06 · Honest limits</div>
     <h2>What is not there today.</h2>
     <div class="contract mono">
       <div class="ct-head">storage · named non-features, not fine print</div>
@@ -179,8 +215,9 @@
 <span class="r">not yet</span>  bare-metal drivers (NVMe / NAS-native) — <span class="dim">until then: VM + virtio-blk</span>
 <span class="r">not yet</span>  multi-host replication — <span class="dim">single-host durability is solid,
          distribution is the hardest open problem on the roadmap</span>
-<span class="r">bounded</span>  blobs cap at 256 MiB; large models need more RAM (and GPUs, later) —
-         <span class="dim">CPU + mid-sized models is the honest v1 reality</span></pre>
+<span class="r">bounded</span>  blobs capped at 256 MiB, then 1 GiB (v0.25); since v0.27 store v4
+         addresses 256 TiB and models page in from disk — <span class="dim">proven up to
+         6 GiB under a 4 GiB budget; no GPUs yet, CPU is the honest v1 reality</span></pre>
     </div>
     <p class="caption">Everything above the line is running and gated in QEMU —
     <a href="proof.html" style="color:var(--sage)">the proof page shows how</a>.</p>

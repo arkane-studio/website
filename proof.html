@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Proof — Arkane OS</title>
-<meta name="description" content="First boot on KVM, and the first measurements that mean anything: syscall p50 224 cycles vs. 1393 for Linux getpid on the same host, IPC round-trip 10% faster than AF_UNIX. Plus 3 rolling updates with 802 requests and 0 errors, an offline-verifiable Blake3 audit chain, and encryption at rest you can check with strings(1).">
+<meta name="description" content="First boot on KVM, and the first measurements that mean anything: syscall p50 224 cycles vs. 1393 for Linux getpid on the same host, IPC round-trip 10% faster than AF_UNIX. Plus 3 rolling updates with 802 requests and 0 errors, an offline-verifiable Blake3 audit chain, encryption at rest you can check with strings(1), and since v0.27 a 6 GiB model run to completion under a 4 GiB RAM budget on KVM.">
 <meta name="theme-color" content="#f3eee3">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Proof — Arkane OS">
-<meta property="og:description" content="First boot on KVM, and the first measurements that mean anything: syscall p50 224 cycles vs. 1393 for Linux getpid on the same host, IPC round-trip 10% faster than AF_UNIX. Plus 3 rolling updates with 802 requests and 0 errors, an offline-verifiable Blake3 audit chain, and encryption at rest you can check with strings(1).">
+<meta property="og:description" content="First boot on KVM, and the first measurements that mean anything: syscall p50 224 cycles vs. 1393 for Linux getpid on the same host, IPC round-trip 10% faster than AF_UNIX. Plus 3 rolling updates with 802 requests and 0 errors, an offline-verifiable Blake3 audit chain, encryption at rest you can check with strings(1), and since v0.27 a 6 GiB model run to completion under a 4 GiB RAM budget on KVM.">
 <meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -52,7 +52,9 @@
     exercises the feature end-to-end, and greps the serial log for the exact
     markers that prove it happened. 47+ gates run on every release. What follows
     are the headline measurements, how they were taken — and what changed when
-    the system was moved off the emulator onto real virtualization.</p>
+    the system was moved off the emulator onto real virtualization. New in
+    <span class="mono">v0.27</span>: <a href="#largerthanram" style="color:var(--sage)">models
+    larger than RAM</a>, proven on KVM.</p>
   </div>
 </div>
 
@@ -288,6 +290,83 @@ txn      <span class="dim">per stmt</span>  53.6    <span class="dim">group comm
     gate-proven, and the golden suite against real SQLite is what makes the
     comparison legitimate in the first place: <b>same semantics, then talk about
     speed.</b></p>
+  </div>
+</section>
+
+<!-- ============ LARGER THAN RAM (v0.27) ============ -->
+<section class="chapter" id="largerthanram">
+  <div class="spawn-strip" data-cell="paging"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">08 &middot; Models larger than RAM</div>
+    <h2>A 6 GiB model under a 4 GiB budget. Run to completion.</h2>
+    <p class="prose">Since <span class="mono">v0.27</span> a model no longer has to
+    fit in memory. The gate gives a cell a <b>4 GiB RAM budget</b> and a
+    <b>6 GiB model</b>, and the model runs through to the end — on KVM, not the
+    emulator. Two mechanisms make that possible, and both are proven separately.</p>
+    <p class="prose"><b>Demand paging.</b> The model is not loaded up front. When
+    the cell touches a part that is not resident, the CPU raises a page fault;
+    the kernel reads the surrounding <b>2 MiB window</b> from disk, checks it
+    against its <b>Blake3</b> hash, and only then maps it <b>read-only</b> into the
+    cell. A window that does not match its hash is never mapped: the gate
+    manipulates one on disk, the page-in is refused, <b>the cell dies cleanly, and
+    the rest of the system keeps running.</b></p>
+    <p class="prose"><b>Eviction.</b> Every cell has a working-set budget. When it
+    is full, the coldest windows go first (FIFO) — unmapped with a
+    <b>TLB shootdown</b>, so no core keeps a stale translation to a frame that has
+    been handed back. The gates check the peak, not the intent:
+    <span class="mono">max_resident</span> reached its budget exactly and never went
+    past it — <b>8 of 8</b> and <b>4 of 4</b>.</p>
+    <div class="term-frame">
+      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">v0.27 &middot; demand paging + eviction &middot; KVM &middot; AMD 5700G</span></div>
+      <pre class="mono term-body" style="min-height:0"><span class="dim">model 6 GiB &middot; ram budget 4 GiB</span>
+run                 <span class="p">completed</span>
+page-in  <span class="dim">2 MiB</span>      <span class="p">p50 ~6 ms</span>   <span class="dim">104&ndash;114 MiB/s</span>
+verify              blake3 per window, before mapping
+mapping             read-only
+max_resident        <span class="p">8/8 &middot; 4/4</span>   <span class="dim">budget reached, never exceeded</span>
+tampered window     <span class="r">refused</span>    <span class="dim">cell dies &middot; system lives</span>
+
+<span class="p">&rarr; model size is bounded by disk, not by ram</span></pre>
+    </div>
+    <p class="caption">The honest frame: <b>one host, KVM, AMD 5700G.</b> The
+    page-in figures are what this machine and this disk image delivered, not a
+    promise for other storage. "Completed" means the run went through end to end
+    under the budget — it is a capacity proof, not a speed claim: a model that
+    pages in from disk is slower than one that fits, and we have not published
+    a token rate for it. The eviction policy is plain FIFO today; smarter
+    policies would be an optimisation, and would get measured before they get
+    claimed.</p>
+  </div>
+</section>
+
+<!-- ============ AGENT DB (v0.27) ============ -->
+<section class="chapter" id="agentdb">
+  <div class="spawn-strip" data-cell="agentdb"></div>
+  <div class="ch-inner narrow">
+    <div class="ch-no">09 &middot; Agent DB</div>
+    <h2>Readers do not wait for the writer.</h2>
+    <p class="prose">The agent database lets readers work from a
+    <b>MAP snapshot</b>: a consistent, read-only view mapped into the reading
+    cell, while the writer carries on producing the next state. The gate runs
+    <b>three readers on separate cores</b> against a writer that never stops —
+    each reader holds <b>~105k reads/s</b>. And which state is current is not a
+    matter of trust: the database head is recorded in the
+    <a href="#audit" style="color:var(--sage)">audit chain</a>, so it can be proven
+    <b>offline</b>, from the disk alone.</p>
+    <div class="term-frame">
+      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">v0.27 &middot; agent db &middot; KVM &middot; cross-core</span></div>
+      <pre class="mono term-body" style="min-height:0"><span class="dim">writer running throughout</span>
+reader 1            <span class="p">~105k reads/s</span>
+reader 2            <span class="p">~105k reads/s</span>
+reader 3            <span class="p">~105k reads/s</span>
+head                proven offline via audit chain
+
+<span class="p">&rarr; snapshot reads scale across cores &middot; head is checkable without the running system</span></pre>
+    </div>
+    <p class="caption">Same frame as everywhere on this page: one host, the
+    figures the gate measured, nothing extrapolated. Three readers is what was
+    proven — not a ceiling we have found, and not a scaling curve we have
+    drawn.</p>
   </div>
 </section>
 
