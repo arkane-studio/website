@@ -1,0 +1,41 @@
+# Arkane OS
+
+> Rust-no_std-Exokernel von Arkane Studio (Schweiz). Apps, Datenbanken und KI-Modelle laufen als hardware-isolierte Cells mit eigenen Page-Tables und default-deny-Capabilities. Jedes Feature existiert nur mit Acceptance-Gate-Beweis: ein Script bootet das echte System in QEMU, fährt das Feature Ende-zu-Ende und greppt die Serial-Marker. Stand: v0.27, KVM-bewiesen auf AMD Ryzen 5700G.
+
+Sprache: Deutsch. Positionierung: beweisbar statt versprochen. Zielgruppe: Entwickler und KI-Agenten.
+
+## Belegte Fakten v0.27 (Wert · Gate · Umgebung)
+
+- 6-GiB-Modell läuft unter 4-GiB-RAM-Budget komplett durch (3372 MiB paged-in) · v27_gm5 · KVM
+- Demand-Paging: #PF → 2-MiB-Fenster von Disk → blake3-verifiziert → read-only gemappt; p50 ~6 ms, 104–114 MiB/s · T-GM7 · KVM
+- Manipuliertes Fenster wird verweigert; Cell stirbt sauber, System lebt · v27_gm5/gm6
+- FIFO-Eviction mit TLB-Shootdown, Working-Set-Budget je Cell: 8/8 und 4/4, 1389 Evictions im 6-GiB-Sweep · v27_gm6
+- Store v4: Extents, 48-Bit-Längen = 256-TiB-Decke je Blob · v27_gm4
+- ArkDB vs. SQLite im Linux-Gast (KVM, release beidseitig): kv_read 0.79× (schneller), scan 3.55×, write 17.89× (durable Root-Commit, benannte Asymmetrie), Group-Commit 0.119 je Statement
+- Agenten-DB: 3 Leser à ~105k reads/s cross-core bei laufendem Schreiber (MAP-Snapshot); Head offline via Audit-Kette (KIND_ROOT_PIN) · T-AG1/AG2 · KVM
+- MCP-Ops: 13 Tools auf gw-admin POST /mcp :9443; Bearer = acp-auth-Token; Viewer 7 read-only, Operator/Admin 13; deploy_apply mit expect_ops-Drift-Check; Audit vor Wirkung; persistenter Schalter (default AN, AUS = 403 ARK_MCP_DISABLED) · v26_mo1–mo4
+- Syscall p50 224 vs. 1393 Zyklen (Linux getpid), IPC-Roundtrip 36850 vs. 40864 (AF_UNIX) · KVM, dev, n=2 · erster Datenpunkt
+- 3 rollierende Restarts unter Last: 802 Requests, 0 Fehler · Rollout-Gate v0.23
+- Audit-Kette (blake3) offline verifizierbar; ein geflipptes Byte → TAMPER seq=4 · arkctl audit verify
+- Sealed at rest: strings store.img findet keinen Klartext · v0.21
+- Kernel ~13 000 Zeilen Rust, 26 Syscalls, 0 Zeilen C; 47+ Gates vor jedem Tag
+
+## Geplant (nicht gebaut)
+
+- SIMD-blake3 beim Page-in (Hash ist dickste Phase, ~14M Zyklen je Fenster)
+- N4 Head-Bindung im SDK (EU-AI-Act Art. 12, Frist 2.12.2027)
+- Egress-Caps; KV-Cache als OS-Objekt (später)
+- Post-1.0: Bare Metal, IOMMU, TPM, Multi-Node
+
+## Seiten
+
+- [Übersicht](index.html): Hero, Kennzahlen, drei Säulen, Für-KI-Agenten, Stand & Roadmap
+- [Beweise](proof.html): alle Zahlen mit Gate und Umgebung, je Thema ein Abschnitt mit Messrahmen
+- [Architektur](architecture.html): Exokernel, Cells & Contracts, Storage, Control Plane, ehrliche Kanten
+- [Loslegen](getit.html): drei Befehle, Apps/SDK, KI-Agent über MCP anbinden
+- [facts.json](facts.json): alle Fakten maschinenlesbar
+
+## Quellen
+
+- Repository: https://github.com/arkane-studio/arkane-os
+- MCP-Client-Anleitung: https://github.com/arkane-studio/arkane-os/blob/main/docs/sdk/mcp_ops.md

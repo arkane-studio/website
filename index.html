@@ -1,266 +1,164 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Arkane OS — an operating system built from isolated cells</title>
-<meta name="description" content="Arkane OS is its own platform: apps run as cells directly on an exokernel — faster and structurally safer than the Linux stack for native workloads, with rolling updates that never go down. Proven in QEMU: 3 rollouts under sustained load, 802 requests, 0 errors.">
-<meta name="theme-color" content="#f3eee3">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arkane OS — Exokernel für Entwickler und KI-Agenten. Beweisbar statt versprochen.</title>
+<meta name="description" content="Arkane OS ist ein Rust-no_std-Exokernel: Apps und KI-Workloads laufen als hardware-isolierte Cells. Jedes Feature existiert nur mit Acceptance-Gate-Beweis. v0.27: 6-GiB-Modell unter 4-GiB-RAM-Budget auf KVM, ArkDB schneller als SQLite bei Punkt-Reads, 13 MCP-Tools für KI-Betrieb.">
+<meta name="theme-color" content="#09090b">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Arkane OS — an operating system built from isolated cells">
-<meta property="og:description" content="Arkane OS is its own platform: apps run as cells directly on an exokernel — faster and structurally safer than the Linux stack for native workloads, with rolling updates that never go down. Proven in QEMU: 3 rollouts under sustained load, 802 requests, 0 errors.">
+<meta property="og:title" content="Arkane OS — beweisbar statt versprochen">
+<meta property="og:description" content="Rust-no_std-Exokernel. Jedes Feature nur mit Acceptance-Gate-Beweis. v0.27: Modelle grösser als RAM, ArkDB, MCP-Ops für KI-Agenten.">
 <meta name="twitter:card" content="summary">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%239db89a' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23e8927c'/%3E%3C/svg%3E">
-<script>
-  document.documentElement.classList.add('js');
-  (function () {
-    let t = null;
-    try { t = localStorage.getItem('arkane_theme'); } catch (e) {}
-    if (!t) t = 'light';
-    document.documentElement.dataset.theme = t;
-  })();
-</script>
+<link rel="canonical" href="index.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2309090b'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%233ecf8e'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<a class="skip" href="#main">Zum Inhalt</a>
 
-<nav id="topnav" aria-label="Main">
-  <a class="nav-brand" href="index.html">arkane<span class="dot-k">.</span></a>
-  <div class="nav-tabs">
-      <a href="index.html" aria-current="page">Overview</a>
-      <a href="architecture.html">Architecture</a>
-      <a href="storage.html">Storage</a>
-      <a href="console.html">Console</a>
-      <a href="proof.html">Proof</a>
-      <a href="roadmap.html">Roadmap</a>
-      <a href="getit.html">Get it</a>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot" aria-hidden="true"></span>arkane<span class="ver">v0.27</span></a>
+    <button class="nav-toggle" type="button" aria-label="Menü" aria-expanded="false">≡</button>
+    <nav aria-label="Hauptnavigation">
+      <ul class="nav-links">
+        <li><a href="index.html" aria-current="page">Übersicht</a></li>
+        <li><a href="proof.html">Beweise</a></li>
+        <li><a href="architecture.html">Architektur</a></li>
+        <li><a href="getit.html">Loslegen</a></li>
+        <li><a class="gh" href="https://github.com/arkane-studio/arkane-os" rel="noopener">GitHub ↗</a></li>
+      </ul>
+    </nav>
   </div>
-  <button id="theme-btn" type="button" aria-label="Switch theme">◐ dark</button>
-</nav>
-
-<main>
-
-<div id="boot" aria-hidden="true">
-  <pre id="boot-log"></pre>
-  <div id="boot-skip">click to skip</div>
-</div>
-
-<!-- ============ HERO ============ -->
-<header id="hero">
-  <canvas id="hero-canvas" aria-hidden="true"></canvas>
-  <div class="hero-inner">
-    <div class="kicker">Arkane OS — its own platform, not another Linux</div>
-    <h1>An operating system<br><em>built from isolated cells.</em></h1>
-    <p class="hero-sub">Apps run as <b>cells directly on an exokernel</b> —
-    no Linux syscall stack in the path, capability enforcement in the kernel
-    itself. Faster and structurally safer for native workloads. And availability
-    is design principle number one: <b>updating an app never takes it down.</b></p>
-  </div>
-  <div class="scroll-cue" aria-hidden="true"><span></span></div>
 </header>
 
-<!-- ============ PROOF TILES ============ -->
-<section class="chapter" id="proof-tiles">
-  <div class="spawn-strip" data-cell="proof"></div>
-  <div class="ch-inner center">
-    <h2>Three claims, three measurements.</h2>
-    <div class="numerals">
-      <a class="nume" href="proof.html"><span class="n">802<small> req · 0 err</small></span><span class="l">three rolling updates<br>under sustained fire —<br>zero downtime</span></a>
-      <a class="nume" href="proof.html#kvm"><span class="n">~6<small>&times;</small></span><span class="l">faster syscall than<br>Linux — measured on<br>real KVM, not projected</span></a>
-      <a class="nume" href="proof.html"><span class="n">47+</span><span class="l">acceptance gates —<br>every feature proven<br>in QEMU before merge</span></a>
+<main id="main">
+
+<section class="hero">
+  <div class="wrap">
+    <div class="status"><span class="dot" aria-hidden="true"></span>v0.27 getaggt · Gates grün · KVM-bewiesen auf AMD 5700G</div>
+    <h1>Ein Betriebssystem, das nichts behauptet,<br><em>was kein Gate bewiesen hat.</em></h1>
+    <p class="lede">Arkane OS ist ein Exokernel in Rust (<code>no_std</code>). Apps, Datenbanken und KI-Modelle laufen als hardware-isolierte <b>Cells</b> mit eigenen Page-Tables und default-deny-Capabilities. Jedes Feature wird erst gemergt, wenn ein Acceptance-Gate das echte System bootet und den Beweis aus dem Serial-Log greppt.</p>
+    <div class="actions">
+      <a class="btn primary" href="proof.html">Beweise lesen</a>
+      <a class="btn" href="getit.html">In drei Befehlen starten</a>
+      <a class="btn" href="llms.txt">Für KI-Agenten: llms.txt</a>
     </div>
-    <p class="caption">Every number was measured, not projected — <a href="proof.html" style="color:var(--sage)">here is how</a>.
-    Where a feature is planned rather than built, the <a href="roadmap.html" style="color:var(--sage)">roadmap</a> says so.</p>
   </div>
 </section>
 
-<!-- ============ PLAYGROUND ============ -->
-<section class="chapter" id="isolation">
-  <div class="spawn-strip" data-cell="isolation"></div>
-  <div class="ch-inner">
-    <h2>Try to break it.</h2>
-    <p class="prose">The real cluster shape — cells around a kernel, each with its
-    own page table. Isolation is enforced by the MMU, not by policy.
-    <b>Click a cell and watch the healer respawn it.</b> Then kill
-    <b>gw-admin</b>, the control plane. And if you want to see where the chain of
-    watchers really ends, kill the <b>supervisor</b> first.</p>
-    <div class="playground-frame">
-      <canvas id="play-canvas" tabindex="0" role="application"
-        aria-describedby="play-hint"
-        aria-label="Cell cluster playground — crash a cell and watch the healer respawn it"></canvas>
-      <div class="play-stats mono">
-        <span>healer <b class="ok" id="stat-healer">online</b></span>
-        <span class="sep">·</span>
-        <span>respawns <b id="stat-respawns">0</b></span>
-        <span class="sep">·</span>
-        <span>drift pending <b id="stat-drift">0</b></span>
-        <span class="sep">·</span>
-        <span>kernel restarts <b class="ok">0</b></span>
+<section class="section tight" aria-labelledby="kpi-h">
+  <div class="wrap">
+    <h2 id="kpi-h" class="eyebrow" style="margin-bottom:24px">Vier Zahlen aus v0.27 — alle mit Gate</h2>
+    <div class="grid c4">
+      <a class="kpi" href="proof.html#paging">
+        <span class="n">6<small>GiB</small></span>
+        <span class="l">Modell läuft komplett durch — unter einem Budget von 4 GiB RAM</span>
+        <span class="g"><b>PASS</b> v27_gm5 · v27_gm6 · KVM</span>
+      </a>
+      <a class="kpi" href="proof.html#paging">
+        <span class="n">~6<small>ms</small></span>
+        <span class="l">Page-in p50 je 2-MiB-Fenster, blake3-verifiziert · 104–114 MiB/s</span>
+        <span class="g"><b>GEMESSEN</b> T-GM7 Phasen-Split · KVM</span>
+      </a>
+      <a class="kpi" href="proof.html#arkdb">
+        <span class="n">0.79<small>×</small></span>
+        <span class="l">ArkDB kv_read gegen SQLite im Linux-Gast — schneller als SQLite</span>
+        <span class="g"><b>PASS</b> bench-arkdb · KVM · release</span>
+      </a>
+      <a class="kpi" href="proof.html#mcp">
+        <span class="n">13<small>Tools</small></span>
+        <span class="l">MCP-Ops: eine KI deployt und verwaltet Cells ohne Mensch — Audit vor Wirkung</span>
+        <span class="g"><b>PASS</b> v26_mo1–mo4</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="what-h">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Was es ist</div>
+      <h2 id="what-h">Drei Dinge, die zusammen nicht kopierbar sind.</h2>
+      <p>Einzeln gibt es jedes davon anderswo. Arkane setzt sie in einen Kernel von rund 13&nbsp;000 Zeilen Rust mit 26 Syscalls — ohne Treiber, ohne Netzwerkstack, ohne Policy im Kernel.</p>
+    </div>
+    <div class="grid c3">
+      <article class="card">
+        <h3>Isolation durch die MMU, nicht durch Policy</h3>
+        <p>Jede Cell hat eigene Page-Tables. Was ein Contract verbietet (<code>forbid(net::outbound)</code>), wird beim Spawn <b>nie verdrahtet</b> — es gibt nichts zu überwachen. Stirbt eine Cell, respawnt der Healer sie aus dem signierten Image; der Kernel startet nicht neu.</p>
+        <div class="foot"><a href="architecture.html#cells">Cells &amp; Contracts →</a></div>
+      </article>
+      <article class="card">
+        <h3>Storage ohne Dateisystem</h3>
+        <p>Ein virtio-blk-Gerät, darüber ein content-adressierter Blob-Store in einer Cell. Seit v0.27 werden Modelle <b>on demand</b> in 2-MiB-Fenstern eingeblendet, blake3-geprüft, read-only. Store v4 adressiert mit 48-Bit-Längen 256&nbsp;TiB je Blob.</p>
+        <div class="foot"><a href="architecture.html#storage">Blobs, Paging, Store v4 →</a></div>
+      </article>
+      <article class="card">
+        <h3>Eine Control Plane, die KIs bedienen dürfen</h3>
+        <p>ACP-Console mit RBAC und CSRF, daneben <b>13 MCP-Tools</b> auf <code>gw-admin :9443</code>. Jede Wirkung steht zuerst als Block im hash-verketteten Audit-Log. Der persistente MCP-Schalter überlebt SIGKILL und Reboot.</p>
+        <div class="foot"><a href="architecture.html#control">Console, MCP-Ops, Audit →</a></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="agents-h" id="agents">
+  <div class="wrap">
+    <div class="split">
+      <div>
+        <div class="eyebrow">Für KI-Agenten</div>
+        <h2 id="agents-h">Diese Site ist auch für Maschinen geschrieben.</h2>
+        <p style="margin-top:16px;color:var(--text-2)">Wer als Agent ankommt, braucht keine Prosa: alle Beweiszahlen liegen als <a href="facts.json"><code>facts.json</code></a> (Wert, Gate, Umgebung, Version), die Kurzfassung als <a href="llms.txt"><code>llms.txt</code></a>. Die Betriebsschnittstelle ist MCP über HTTPS — Bearer-Token, Rollenmatrix default-deny, jede Mutation auditiert, bevor sie wirkt.</p>
+        <p style="color:var(--text-2)">Ein laufendes Arkane kann so ohne Menschen betrieben werden: Manifest diffen, applyen, Cells stoppen, starten, ausrollen, Logs lesen. Was der Operator in der Console darf, darf der Agent über MCP — nicht mehr.</p>
+      </div>
+      <div>
+        <dl class="kv">
+          <dt>Endpunkt</dt><dd><code>POST https://&lt;host&gt;:9443/mcp</code> (gw-admin)</dd>
+          <dt>Auth</dt><dd>Bearer = acp-auth-Token, Kanal ≠ Cookie in der Token-Ableitung</dd>
+          <dt>Rollen</dt><dd>Viewer 7 Tools read-only · Operator / Admin 13 Tools</dd>
+          <dt>Drift-Schutz</dt><dd><code>deploy_apply</code> verlangt <code>expect_ops</code> aus dem vorherigen <code>deploy_diff</code></dd>
+          <dt>Schalter</dt><dd>Console-Karte, Standard AN, persistent; AUS = <code>403 ARK_MCP_DISABLED</code></dd>
+          <dt>Fakten</dt><dd><a href="facts.json">facts.json</a> · <a href="llms.txt">llms.txt</a> · <a href="https://github.com/arkane-studio/arkane-os/blob/main/docs/sdk/mcp_ops.md" rel="noopener">docs/sdk/mcp_ops.md</a></dd>
+        </dl>
       </div>
     </div>
-    <p class="play-hint" id="play-hint">Click a cell to crash it. With the map focused:
-    <b>←</b>/<b>→</b> select a cell, <b>Enter</b> crashes it.</p>
-    <p class="sr-only" id="play-status" role="status" aria-live="polite"></p>
-    <p class="caption">Crash → drift detected → respawn from the signed image.
-    In production the same machinery goes further: declare
-    <span class="mono">replicas: N</span> and a rolling restart never lets the
-    group hit zero. <a href="architecture.html" style="color:var(--sage)">How it all fits together →</a></p>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="roadmap-h" id="roadmap">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Stand &amp; Roadmap</div>
+      <h2 id="roadmap-h">Bewiesen heisst getaggt mit grünen Gates. Geplant heisst geplant.</h2>
+      <p>Nichts unterhalb der Linie wird beansprucht. Ziel 1.0: ein fertiges KI-OS, das unter QEMU/KVM läuft und sein Existenzrecht komplett bewiesen hat. Bare Metal, IOMMU und TPM kommen danach.</p>
+    </div>
+    <ul class="timeline">
+      <li><span class="v">v0.13–16</span><span class="pill ok">bewiesen</span><span class="t"><b>Persistenz &amp; Trust</b> — blake3-WAL, Crash-Recovery (apply → reboot → Zustand intakt), dreistufige Ed25519-Signaturkette.</span></li>
+      <li><span class="v">v0.17–19</span><span class="pill ok">bewiesen</span><span class="t"><b>KI-Workloads, Multicore, Audit</b> — Inferenz in der Cell, Chat-API, MCP-Tool-Cells; Preemption auf vier Kernen; hash-verkettetes Audit-Log.</span></li>
+      <li><span class="v">v0.20–21</span><span class="pill ok">bewiesen</span><span class="t"><b>SDK &amp; Datenschutz</b> — signierte App-Bundles, OS als signiertes CI-Image, Verschlüsselung at rest mit netzfreiem Keystore.</span></li>
+      <li><span class="v">v0.22–23</span><span class="pill ok">bewiesen</span><span class="t"><b>ACP-Console &amp; HA</b> — Browser-Login mit Rollen, Replica-Gruppen, rollierende Restarts: 3 Rollouts unter Last, 802 Requests, 0 Fehler.</span></li>
+      <li><span class="v">v0.24</span><span class="pill ok">bewiesen</span><span class="t"><b>Erster KVM-Boot &amp; Messung gegen Linux</b> — Syscall p50 224 vs. 1393 Zyklen (getpid), IPC-Roundtrip ~10&nbsp;% schneller als AF_UNIX. Ein Host, dev-Profil, n=2.</span></li>
+      <li><span class="v">v0.25</span><span class="pill ok">bewiesen</span><span class="t"><b>ArkDB</b> — mit dem SDK gebaut, golden-getestet gegen SQLite: kv_read 0.79×, Group-Commit 0.119 je Statement. Modell-Decke 256 MiB → 1 GiB.</span></li>
+      <li><span class="v">v0.26</span><span class="pill ok">bewiesen</span><span class="t"><b>MCP-Ops</b> — 13 Tools auf gw-admin, RBAC, Audit-vor-Wirkung, persistenter Schalter. Demo: KI deployt Cell und liest Logs ohne Console.</span></li>
+      <li><span class="v">v0.27</span><span class="pill ok">bewiesen</span><span class="t"><b>Modelle grösser als RAM</b> — Store v4 (Extents, 48-Bit-Längen), Demand-Paging mit blake3-Verifikation, FIFO-Eviction mit TLB-Shootdown, Agenten-DB mit drei Lesern cross-core.</span></li>
+      <li><span class="v">nächste</span><span class="pill plan">geplant</span><span class="t"><b>SIMD-blake3</b> — Phasen-Split zeigt den Hash als dickste Phase beim Page-in (~14M Zyklen je Fenster); nächster benannter Perf-Hebel.</span></li>
+      <li><span class="v">nächste</span><span class="pill plan">geplant</span><span class="t"><b>N4 Head-Bindung im SDK</b> — der DB-Stand als Einzeiler an den Audit-Head gebunden; Baustein für EU-AI-Act Art.&nbsp;12 (Frist 2.12.2027, Omnibus).</span></li>
+      <li><span class="v">später</span><span class="pill plan">geplant</span><span class="t"><b>Egress-Caps</b> (Ziel-Whitelist für ausgehende Verbindungen) und <b>KV-Cache als OS-Objekt</b> — Konzept vorhanden, nicht gebaut.</span></li>
+      <li><span class="v">post-1.0</span><span class="pill">nicht vor 1.0</span><span class="t"><b>Bare Metal, IOMMU, TPM, Multi-Node.</b> Heute heisst HA eine Maschine, und das Ziel bleibt QEMU/KVM.</span></li>
+    </ul>
   </div>
 </section>
 
 </main>
 
-<footer id="coda">
-  <p class="coda-line">What does not exist<br><em>cannot break.</em></p>
-  <div class="colophon"><a href="https://github.com/arkane-studio/arkane-os">github</a> &nbsp;·&nbsp; arkane@2026</div>
+<footer class="footer">
+  <div class="wrap">
+    <span class="claim">Was nicht existiert, <b>kann nicht brechen.</b></span>
+    <span><a href="https://github.com/arkane-studio/arkane-os" rel="noopener">github.com/arkane-studio/arkane-os</a> · Arkane Studio, Schweiz · 2026</span>
+  </div>
 </footer>
 
-<script src="cells.js"></script>
 <script src="site.js"></script>
-<script>
-(function () {
-  'use strict';
-  const REDUCED = ArkaneSite.REDUCED, $ = ArkaneSite.$, sleep = ArkaneSite.sleep;
-
-  /* ---------- boot sequence ---------- */
-  const BOOT_LINES = [
-    'arkane-kernel v0.22 · x86_64 · <span class="hl">exokernel</span>',
-    '[0.000] trust: whitelist verified · root ed25519 <span class="ok">✓</span>',
-    '[0.009] smp: 4 cores online',
-    '[0.013] spawn cell <span class="hl">gw-admin</span>     sig <span class="ok">✓</span> · control plane · healer',
-    '[0.015] spawn cell <span class="hl">persistence</span>  sig <span class="ok">✓</span>',
-    '[0.018] spawn cell <span class="hl">gw-public</span>    sig <span class="ok">✓</span> · round-robin routing',
-    '[0.020] spawn cell <span class="hl">gw-mcp</span>       sig <span class="ok">✓</span>',
-    '[0.023] spawn cell <span class="hl">keystore</span>     sig <span class="ok">✓</span> · net-free · KEK ram-only',
-    '[0.031] apply: <span class="hl">inference ×2</span> sig <span class="ok">✓</span> · replica group · model mapped ro',
-    '[0.036] console: :9443 TLS · RBAC · audit chain rooted',
-    'arkane: cluster ready in <span class="ok">7.4s</span> · <span class="ok">0 drift</span> · unattended',
-  ];
-  async function boot() {
-    const overlay = $('#boot'), log = $('#boot-log');
-    if (REDUCED) { finishBoot(); return; }
-    let skipped = false;
-    overlay.addEventListener('click', () => { skipped = true; }, { once: true });
-    for (const line of BOOT_LINES) {
-      if (skipped) break;
-      log.innerHTML += line + '\n';
-      await sleep(120);
-    }
-    if (!skipped) await sleep(380);
-    finishBoot();
-  }
-  function finishBoot() {
-    $('#boot').classList.add('off');
-    document.documentElement.classList.add('booted');
-  }
-
-  /* ---------- hero ambient field ---------- */
-  new ArkaneCells.CellField($('#hero-canvas'), {
-    mode: 'ambient',
-    wobble: 0.05,
-    drift: 0.022,
-    cells: [
-      { x: 0.16, y: 0.30, r: 90,  color: 'sage'  },
-      { x: 0.84, y: 0.26, r: 70,  color: 'ice'   },
-      { x: 0.10, y: 0.74, r: 60,  color: 'coral' },
-      { x: 0.88, y: 0.70, r: 100, color: 'sage'  },
-      { x: 0.50, y: 0.88, r: 55,  color: 'sand'  },
-      { x: 0.62, y: 0.12, r: 48,  color: 'coral' },
-    ],
-  });
-
-  /* ---------- playground with honest healer mechanics ---------- */
-  const PLAY_TOTAL = 7;
-  let alive = PLAY_TOTAL;
-  let respawns = 0;
-  let healerDown = false;
-  let supervisorDown = false;
-  const pendingDrift = [];
-  const statRespawns = $('#stat-respawns');
-  const statHealer = $('#stat-healer');
-  const statDrift = $('#stat-drift');
-
-  function setHealer(state) {            // 'online' | 'down' | 'restoring'
-    healerDown = state !== 'online';
-    statHealer.textContent = state === 'online' ? 'online' : state === 'down' ? 'DOWN' : 'restoring…';
-    statHealer.className = state === 'online' ? 'ok' : 'bad';
-  }
-  function setDrift() { statDrift.textContent = pendingDrift.length; }
-  const playStatus = $('#play-status');
-  function say(msg) { playStatus.textContent = msg; }
-
-  const playField = new ArkaneCells.CellField($('#play-canvas'), {
-    mode: 'interactive',
-    wobble: 0.06,
-    drift: 0.012,
-    cells: [
-      { x: 0.50, y: 0.46, r: 30, color: 'sage',  label: 'kernel',     role: 'kernel' },
-      { x: 0.18, y: 0.30, r: 62, color: 'sage',  label: 'gw-admin',   role: 'healer' },
-      { x: 0.36, y: 0.14, r: 38, color: 'sand',  label: 'supervisor', role: 'supervisor' },
-      { x: 0.38, y: 0.76, r: 56, color: 'ice',   label: 'gw-public' },
-      { x: 0.64, y: 0.22, r: 54, color: 'ice',   label: 'gw-mcp' },
-      { x: 0.84, y: 0.52, r: 66, color: 'coral', label: 'inference' },
-      { x: 0.15, y: 0.70, r: 50, color: 'sand',  label: 'persistence' },
-      { x: 0.66, y: 0.78, r: 44, color: 'sage',  label: 'keystore' },
-    ],
-    onEvent(type, cell) {
-      if (type === 'crash') {
-        alive--;
-        say(cell.label + ' crashed — ' + alive + ' of ' + PLAY_TOTAL + ' cells alive');
-        if (cell.role === 'healer') {
-          setHealer('down');
-          if (!supervisorDown) {
-            setTimeout(() => {
-              setHealer('restoring');
-              const sup = playField.cells.find(c => c.role === 'supervisor');
-              playField.pulse(sup, cell, { kind: 'kernel', duration: 3700, onArrive: () => playField.revive(cell) });
-            }, 2800);
-          }
-        } else if (cell.role === 'supervisor') {
-          supervisorDown = true;
-        } else {
-          if (healerDown) {
-            pendingDrift.push(cell);
-            setDrift();
-          } else {
-            setTimeout(() => {
-              if (cell.alive) return;
-              if (healerDown) {
-                if (!pendingDrift.includes(cell)) { pendingDrift.push(cell); setDrift(); }
-              } else {
-                const healer = playField.cells.find(c => c.role === 'healer');
-                playField.pulse(healer, cell, { kind: 'heal', onArrive: () => playField.revive(cell) });
-              }
-            }, 800 + Math.random() * 400);
-          }
-        }
-      } else if (type === 'respawn') {
-        alive++;
-        respawns++;
-        statRespawns.textContent = respawns;
-        say(cell.label + ' respawned — ' + alive + ' of ' + PLAY_TOTAL + ' cells alive');
-        if (cell.role === 'healer') {
-          setHealer('online');
-          pendingDrift.splice(0).forEach((dead, i) => {
-            setTimeout(() => {
-              playField.pulse(cell, dead, { kind: 'heal', onArrive: () => { playField.revive(dead); setDrift(); } });
-            }, 600 + i * 420);
-          });
-          setDrift();
-        }
-      } else if (type === 'kernel-denied') {
-        say('the kernel refuses to stop itself');
-      } else if (type === 'select') {
-        say(cell.label + ' — ' + (cell.alive ? 'running. press Enter to crash it' : 'dead'));
-      }
-    },
-  });
-
-  boot();
-})();
-</script>
 </body>
 </html>

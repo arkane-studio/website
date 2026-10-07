@@ -1,0 +1,51 @@
+{
+  "$schema_note": "Arkane OS — belegte Fakten. Jede Zahl trägt Gate/Quelle, Umgebung und Version. Nur was hier steht, wird auf der Site behauptet.",
+  "product": "Arkane OS",
+  "version": "v0.27",
+  "updated": "2026-10-07",
+  "repo": "https://github.com/arkane-studio/arkane-os",
+  "site": {
+    "pages": ["index.html", "proof.html", "architecture.html", "getit.html"],
+    "llms_txt": "llms.txt"
+  },
+  "environments": {
+    "kvm": "QEMU mit KVM auf AMD Ryzen 5700G, ein Host. Beweist Verhalten und Geschwindigkeit.",
+    "tcg": "QEMU Software-Emulation (TCG). Beweist Verhalten, nie Geschwindigkeit."
+  },
+  "facts": [
+    { "id": "model_larger_than_ram", "claim": "6-GiB-Modell läuft unter 4-GiB-RAM-Budget komplett durch", "value": "completed", "detail": "3372 MiB paged-in, -m 4G", "gate": "v27_gm5", "env": "kvm", "version": "v0.27", "status": "proven" },
+    { "id": "page_in_latency", "claim": "Page-in je 2-MiB-Fenster inkl. blake3-Verifikation", "value": "p50 ~6 ms", "detail": "104–114 MiB/s; ~22.6M Zyklen; vorher 145 ms (24x, dev-blake3)", "gate": "T-GM7 Phasen-Split", "env": "kvm", "version": "v0.27", "status": "measured" },
+    { "id": "tamper_refused", "claim": "Manipuliertes Fenster wird verweigert, Cell stirbt sauber, System lebt", "value": "verify_fail, keine Panik", "gate": "v27_gm5, v27_gm6", "env": "kvm,tcg", "version": "v0.27", "status": "proven" },
+    { "id": "eviction_budget", "claim": "FIFO-Eviction hält das Working-Set-Budget exakt ein", "value": "8/8, 4/4", "detail": "6-GiB-Sweep unter Druck durchgelaufen, 1389 Evictions, 62 s (KVM), TLB-Shootdown cross-core", "gate": "v27_gm6", "env": "kvm,tcg", "version": "v0.27", "status": "proven" },
+    { "id": "store_v4", "claim": "Store v4: Extents, 48-Bit-Längen", "value": "256 TiB Decke je Blob", "detail": "512-MiB-Blob = 1 Extent, Buchhaltung 64 B statt 1 MiB; v3 byte-exakt lesbar; Oversize sauber verweigert", "gate": "v27_gm4", "env": "kvm,tcg", "version": "v0.27", "status": "proven" },
+    { "id": "arkdb_kv_read", "claim": "ArkDB Punkt-Read gegen SQLite im Linux-Gast (Verhältnis, <1 = schneller)", "value": 0.79, "detail": "1624x langsamer bei Sprintstart", "gate": "bench-arkdb, golden_sqlite", "env": "kvm, release beidseitig", "version": "v0.25", "status": "proven" },
+    { "id": "arkdb_scan", "claim": "ArkDB Scan gegen SQLite (Verhältnis)", "value": 3.55, "detail": "strukturell: verteilte B-Baum-Abstiege vs. ein zusammenhängendes Blatt", "gate": "bench-arkdb", "env": "kvm, release beidseitig", "version": "v0.25", "status": "proven" },
+    { "id": "arkdb_write", "claim": "ArkDB Einzel-Write gegen SQLite (Verhältnis)", "value": 17.89, "detail": "durable Root-Commit (ADR-025); SQLite im initramfs zahlt keine Persistenz — benannte Asymmetrie", "gate": "bench-arkdb", "env": "kvm, release beidseitig", "version": "v0.25", "status": "proven" },
+    { "id": "arkdb_group_commit", "claim": "ArkDB Group-Commit: Statement in BEGIN..COMMIT als Anteil eines Einzel-Writes", "value": 0.119, "detail": "~8.4x günstiger; SQLite 0.04 → je Statement in Txn 53.6x", "gate": "bench-arkdb (db_txn_write)", "env": "kvm, release beidseitig", "version": "v0.25", "status": "proven" },
+    { "id": "agentdb_readers", "claim": "Agenten-DB: drei Leser cross-core bei laufendem Schreiber", "value": "~105k reads/s je Leser", "detail": "MAP-Snapshot; MAP-Lesen 0.41x einer IPC-Lesung; Rotation je Commit 68–1713x IPC (Abbruchkriterium, N1-Design offen)", "gate": "T-AG1", "env": "kvm", "version": "v0.27", "status": "proven" },
+    { "id": "agentdb_head_offline", "claim": "DB-Head offline über die Audit-Kette beweisbar", "value": "audit chain OK", "detail": "KIND_ROOT_PIN; arkctl db pin / db diff", "gate": "T-AG2", "env": "offline", "version": "v0.27", "status": "proven" },
+    { "id": "mcp_ops", "claim": "MCP-Ops: KI deployt und verwaltet Cells ohne Mensch", "value": "13 Tools", "detail": "gw-admin POST /mcp :9443; Bearer = acp-auth-Token; Viewer 7 read-only, Operator/Admin 13; deploy_apply mit expect_ops-Drift-Check; Audit vor Wirkung; persistenter Schalter default AN, AUS = 403 ARK_MCP_DISABLED", "gate": "v26_mo1, v26_mo2, v26_mo3, v26_mo4", "env": "kvm,tcg", "version": "v0.26", "status": "proven" },
+    { "id": "syscall_vs_linux", "claim": "Syscall-Latenz p50 Arkane vs. Linux getpid, gleicher Host", "value": "224 vs. 1393 Zyklen", "gate": "bench-vs-linux", "env": "kvm, dev, n=2", "version": "v0.24", "status": "measured" },
+    { "id": "ipc_vs_afunix", "claim": "IPC-Roundtrip p50 Arkane vs. AF_UNIX", "value": "36850 vs. 40864", "detail": "~10 % schneller; unter TCG fälschlich 3.5x langsamer (Emulationsartefakt)", "gate": "bench-vs-linux", "env": "kvm, dev, n=2", "version": "v0.24", "status": "measured" },
+    { "id": "serving_path", "claim": "Serving-Pfad p50 Arkane/Linux, Boot-Trace aus", "value": "0.98–1.34", "detail": "public-tree 0.977, static-json 1.224, mcp-notes-search 1.285, mcp-echo 1.344; 80–89 % der ersten Latenz war eigene Debug-Serial-Ausgabe", "gate": "bench-vs-linux", "env": "kvm, dev", "version": "v0.24", "status": "measured" },
+    { "id": "rollout_zero_errors", "claim": "Drei rollierende Restarts einer Replica-Gruppe unter Dauerlast", "value": "802 Requests, 0 Fehler", "detail": "min alive 1 (floor N−1)", "gate": "Rollout-Gate v0.23", "env": "tcg", "version": "v0.23", "status": "proven" },
+    { "id": "boot_converged", "claim": "Boot bis konvergierter Cluster, unbeaufsichtigt", "value": "7.4 s", "gate": "Boot-Latenz-Gate v0.23", "env": "tcg", "version": "v0.23", "status": "proven" },
+    { "id": "audit_tamper", "claim": "Audit-Kette erkennt ein geflipptes Byte offline", "value": "TAMPER seq=4", "detail": "blake3-Hash-Kette; Grenze: beweist nur nach dem letzten verifizierten Anker", "gate": "arkctl audit verify", "env": "offline", "version": "v0.19", "status": "proven" },
+    { "id": "sealed_at_rest", "claim": "Kein Klartext auf der Platte nach Schreib-Roundtrip", "value": "strings | grep -c → 0", "detail": "XChaCha20-Poly1305; KEK nur RAM in netzfreier Keystore-Cell", "gate": "Sealed-at-rest-Gate v0.21", "env": "tcg", "version": "v0.21", "status": "proven" },
+    { "id": "kernel_size", "claim": "Kernel-Grösse", "value": "~13 000 Zeilen Rust, 26 Syscalls, 0 Zeilen C", "gate": "Repository", "env": "-", "version": "v0.27", "status": "fact" },
+    { "id": "gates_count", "claim": "Acceptance-Gates vor jedem Tag", "value": "47+", "gate": "make ci-acceptance", "env": "tcg,kvm", "version": "v0.27", "status": "fact" }
+  ],
+  "planned": [
+    { "id": "simd_blake3", "claim": "SIMD-blake3 beim Page-in", "detail": "Hash ist mit ~14M Zyklen je Fenster die dickste Phase", "status": "planned" },
+    { "id": "n4_head_binding", "claim": "N4 Head-Bindung im SDK", "detail": "DB-Stand als Einzeiler an den Audit-Head gebunden; Baustein für EU-AI-Act Art. 12 (Frist 2.12.2027)", "status": "planned" },
+    { "id": "egress_caps", "claim": "Egress-Caps (Ziel-Whitelist ausgehend)", "status": "planned" },
+    { "id": "kv_cache_os_object", "claim": "KV-Cache als OS-Objekt", "status": "planned, später" },
+    { "id": "post_1_0", "claim": "Bare Metal, IOMMU, TPM, Multi-Node", "status": "not before 1.0" }
+  ],
+  "not_measured": [
+    "Token-Rate beim Paging von der Platte",
+    "Spitzenkapazität im Serving-Pfad",
+    "Mehr als drei Leser auf der Agenten-DB",
+    "Bare Metal"
+  ]
+}

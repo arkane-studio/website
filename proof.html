@@ -1,384 +1,319 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Proof — Arkane OS</title>
-<meta name="description" content="First boot on KVM, and the first measurements that mean anything: syscall p50 224 cycles vs. 1393 for Linux getpid on the same host, IPC round-trip 10% faster than AF_UNIX. Plus 3 rolling updates with 802 requests and 0 errors, an offline-verifiable Blake3 audit chain, encryption at rest you can check with strings(1), and since v0.27 a 6 GiB model run to completion under a 4 GiB RAM budget on KVM.">
-<meta name="theme-color" content="#f3eee3">
-<meta property="og:type" content="website">
-<meta property="og:title" content="Proof — Arkane OS">
-<meta property="og:description" content="First boot on KVM, and the first measurements that mean anything: syscall p50 224 cycles vs. 1393 for Linux getpid on the same host, IPC round-trip 10% faster than AF_UNIX. Plus 3 rolling updates with 802 requests and 0 errors, an offline-verifiable Blake3 audit chain, encryption at rest you can check with strings(1), and since v0.27 a 6 GiB model run to completion under a 4 GiB RAM budget on KVM.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beweise — Arkane OS v0.27</title>
+<meta name="description" content="Jede Behauptung mit Gate, Zahl und Messumgebung: 6-GiB-Modell unter 4-GiB-Budget (KVM), Page-in p50 ~6 ms, FIFO-Eviction 8/8 und 4/4, ArkDB kv_read 0.79× SQLite, Agenten-DB 3 Leser à ~105k reads/s, 13 MCP-Tools, Syscall 224 vs. 1393 Zyklen, 802 Requests 0 Fehler beim Rollout, Audit-Kette offline verifizierbar.">
+<meta name="theme-color" content="#09090b">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Beweise — Arkane OS v0.27">
+<meta property="og:description" content="Jede Behauptung mit Gate, Zahl und Messumgebung. Modelle grösser als RAM, ArkDB, Agenten-DB, MCP-Ops, Syscall/IPC gegen Linux, Rollout ohne Ausfall, Audit-Kette.">
 <meta name="twitter:card" content="summary">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%239db89a' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23e8927c'/%3E%3C/svg%3E">
-<script>
-  document.documentElement.classList.add('js');
-  (function () {
-    let t = null;
-    try { t = localStorage.getItem('arkane_theme'); } catch (e) {}
-    if (!t) t = 'light';
-    document.documentElement.dataset.theme = t;
-  })();
-</script>
+<link rel="canonical" href="proof.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2309090b'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%233ecf8e'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<a class="skip" href="#main">Zum Inhalt</a>
 
-<nav id="topnav" aria-label="Main">
-  <a class="nav-brand" href="index.html">arkane<span class="dot-k">.</span></a>
-  <div class="nav-tabs">
-      <a href="index.html">Overview</a>
-      <a href="architecture.html">Architecture</a>
-      <a href="storage.html">Storage</a>
-      <a href="console.html">Console</a>
-      <a href="proof.html" aria-current="page">Proof</a>
-      <a href="roadmap.html">Roadmap</a>
-      <a href="getit.html">Get it</a>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot" aria-hidden="true"></span>arkane<span class="ver">v0.27</span></a>
+    <button class="nav-toggle" type="button" aria-label="Menü" aria-expanded="false">≡</button>
+    <nav aria-label="Hauptnavigation">
+      <ul class="nav-links">
+        <li><a href="index.html">Übersicht</a></li>
+        <li><a href="proof.html" aria-current="page">Beweise</a></li>
+        <li><a href="architecture.html">Architektur</a></li>
+        <li><a href="getit.html">Loslegen</a></li>
+        <li><a class="gh" href="https://github.com/arkane-studio/arkane-os" rel="noopener">GitHub ↗</a></li>
+      </ul>
+    </nav>
   </div>
-  <button id="theme-btn" type="button" aria-label="Switch theme">◐ dark</button>
-</nav>
+</header>
 
-<main>
+<main id="main">
 
-<div class="page-head">
-  <div class="ch-inner">
-    <div class="ch-no">Proof</div>
-    <h2>Every claim has a gate.</h2>
-    <p class="prose">Arkane is built on a proof culture: <b>no feature merges
-    without an acceptance gate</b> — a script that boots the real system in QEMU,
-    exercises the feature end-to-end, and greps the serial log for the exact
-    markers that prove it happened. 47+ gates run on every release. What follows
-    are the headline measurements, how they were taken — and what changed when
-    the system was moved off the emulator onto real virtualization. New in
-    <span class="mono">v0.27</span>: <a href="#largerthanram" style="color:var(--sage)">models
-    larger than RAM</a>, proven on KVM.</p>
-  </div>
-</div>
-
-<!-- ============ KVM ============ -->
-<section class="chapter" id="kvm">
-  <div class="spawn-strip" data-cell="kvm"></div>
-  <div class="ch-inner narrow">
-    <div class="ch-no">01 · First boot on KVM</div>
-    <h2>Off the emulator, onto real virtualization.</h2>
-    <p class="prose">Every number on this page used to come from QEMU under
-    <b>TCG</b> — software emulation, where each privileged instruction is
-    interpreted. Arkane now boots on <b>KVM</b> on AMD hardware: the same kernel,
-    but the CPU executes it. That is the first time the measurements mean
-    anything about speed — and it is the first time Arkane and Linux were timed
-    on the same machine, with the same counter, in the same run.</p>
-    <div class="term-frame">
-      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">first measured run · KVM · AMD host · dev profile · p50</span></div>
-      <pre class="mono term-body" style="min-height:0"><span class="dim">                  arkane   linux</span>
-syscall              <span class="p">224</span>    1393  <span class="dim">getpid</span>
-ipc round-trip     <span class="p">36850</span>   40864  <span class="dim">af_unix</span>
-
-<span class="p">→ syscall ~6× faster · ipc ~10% faster</span></pre>
-    </div>
-    <p class="caption">The honest frame, stated before anyone asks for it:
-    <b>one host, dev-profile build, n=2 runs.</b> That is a first datapoint, not a
-    benchmark suite — no claim about other hardware, other workloads, or a
-    release build follows from it, and the IPC figures are raw counter values
-    from the same harness on both sides: the pair is the result, not the unit.
-    What it does settle is the direction: the
-    syscall path is genuinely short, and IPC is not the liability the emulator
-    made it look like.</p>
-    <p class="prose">It also corrects us. Under TCG the IPC round-trip measured
-    <b>3.5× slower than Linux</b>, and that was the working assumption — the thing
-    to go fix. On real virtualization the same path is <b>10% faster</b>. The old
-    figure was an emulation artefact: TCG's cost model, not Arkane's. It is named
-    here rather than quietly dropped, because a measurement culture that only
-    publishes the flattering revisions is not one.</p>
-    <p class="prose">The full serving path has a correction of its own. Its first
-    KVM run put Arkane at <b>5.5–10.8× Linux's latency</b>. Before optimising
-    anything, we decomposed it: <b>80–89% of that latency was our own debug
-    serial output</b>, written on every request. With it switched off, Arkane
-    serves at <b>0.98–1.34× Linux</b> — parity on the public tree, 1.2–1.35×
-    behind on the rest. Honest benchmarks find your own mistakes too.</p>
-    <div class="term-frame">
-      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">serving path · KVM · AMD 5700G · dev profile · boot-trace off · p50 arkane/linux</span></div>
-      <pre class="mono term-body" style="min-height:0"><span class="dim">                   R_p50   (&lt;1 = arkane faster)</span>
-public-tree        <span class="p">0.977</span>   <span class="dim">parity</span>
-static-json        1.224
-mcp-notes-search   1.285
-mcp-echo           1.344
-
-<span class="p">→ parity on public-tree · 1.2–1.35× behind elsewhere</span></pre>
-    </div>
-    <p class="caption">Same frame as above: one host, dev profile. Load was paced
-    at 50 req/s, and both sides held that rate (throughput ratio 1.0–1.15). Peak
-    capacity has not been measured yet. The tail is still wider, with p99 at
-    1.2–1.9× Linux. The remaining gap is real, and it is the next thing to work on.</p>
-  </div>
-</section>
-
-<!-- ============ WHAT KVM FOUND ============ -->
-<section class="chapter" id="kvmbugs">
-  <div class="spawn-strip" data-cell="strict"></div>
-  <div class="ch-inner narrow">
-    <div class="ch-no">02 · What the emulator hid</div>
-    <h2>Three kernel bugs that only a real CPU could find.</h2>
-    <p class="prose">The first KVM boot did not work. Three bugs had been sitting
-    in the kernel — green through every gate — because TCG checks loosely where
-    hardware checks strictly. Each one is a rule the real CPU enforces and the
-    emulator waved through:</p>
-    <div class="contract">
-      <div class="ct-head mono">found by KVM · fixed before the measurement run</div>
-      <pre><span class="r">1</span>  IDT gaps          <span class="dim">— vectors missing from the interrupt
-                       descriptor table. TCG tolerated it; KVM did not.</span>
-<span class="r">2</span>  MSI-X swapgs      <span class="dim">— GS handling on the MSI-X interrupt path.
-                       Wrong under strict checking, harmless under TCG.</span>
-<span class="r">3</span>  SS.RPL selector   <span class="dim">— stack-segment selector privilege bits.
-                       The emulator accepted them; the CPU rejected them.</span>
-<span class="m">→ all three fixed · KVM boot green · measurement run followed</span></pre>
-    </div>
-    <p class="prose">This is the argument for the proof culture, made by
-    counter-example. 47+ acceptance gates were green and three real bugs were
-    still there — not because the gates were weak, but because they ran on an
-    environment <i>kinder than reality</i>. What found the bugs was not a better
-    test. It was a stricter machine.</p>
-    <p class="caption"><b>TCG hid them. KVM found them. An after-work PC proved
-    it.</b> No lab, no cluster, no budget — one AMD desktop, and the bugs had
-    nowhere left to hide.</p>
-  </div>
-</section>
-
-<!-- ============ ZERO DOWNTIME ============ -->
-<section class="chapter" id="zerodowntime">
-  <div class="spawn-strip" data-cell="rollout"></div>
-  <div class="ch-inner narrow">
-    <div class="ch-no">03 · Zero-downtime update</div>
-    <h2>802 requests. 0 errors. During the update.</h2>
-    <p class="prose">The gate keeps a client firing requests at the inference
-    replica group <b>while</b> <span class="mono">arkctl cell rollout</span> restarts
-    it — three times in a row. The gateway routes round-robin to whichever
-    replica is alive; the rollout is ready-gated so the group never drops to
-    zero. Result across three rollouts under sustained fire:
-    <b>802 requests, 0 failed responses.</b></p>
-    <div class="term-frame">
-      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">acceptance gate · rollout under fire</span></div>
-      <pre class="mono term-body" style="min-height:0">$ arkctl cell rollout inference   <span class="dim"># ×3, client firing throughout</span>
-<span class="dim">ROLLOUT_START · step 1: alive_before=2 · ready · step 2: alive_before=2 · ready · DONE</span>
-<span class="p">requests: 802 · errors: 0 · min alive: 1 (floor N−1)</span></pre>
-    </div>
-    <p class="caption">This is the availability claim made concrete: <b>updating an
-    app never takes it down.</b> The serial-log markers (START / STEP / READY / DONE,
-    never ABORT) are what the gate greps for — not a dashboard screenshot.</p>
-  </div>
-</section>
-
-<!-- ============ BOOT ============ -->
-<section class="chapter" id="bootlatency">
-  <div class="spawn-strip" data-cell="boot"></div>
-  <div class="ch-inner narrow">
-    <div class="ch-no">04 · Boot latency</div>
-    <h2>Power-on to converged cluster: 7.4 s.</h2>
-    <p class="prose">Measured in QEMU under TCG, unattended — no request needed to
-    poke the system awake. The interesting part is what the gate found first:
-    the kernel was never slow, but one cell waited indefinitely for its first
-    network request, so an untouched boot never converged at all. The fix gave
-    it a time budget; the gate now enforces convergence <b>without any external
-    stimulus</b>. Boot under 3 s is a named optimization target, not yet claimed.</p>
-    <div class="contract">
-      <div class="ct-head mono">boot-trace · per-phase timing, on by default</div>
-      <pre>[0.0s]  kernel entry · 4 cores
-[2.1s]  cells spawned · signatures verified
-[6.8s]  TLS keys generated · console up
-<span class="m">[7.4s]  cluster converged · 0 drift · no poke</span></pre>
+<section class="hero" style="padding-bottom:48px">
+  <div class="wrap">
+    <div class="eyebrow">Beweise</div>
+    <h1>Jede Behauptung hat ein Gate.</h1>
+    <p class="lede">Ein Acceptance-Gate ist ein Script, das das echte System in QEMU bootet, das Feature Ende-zu-Ende durchfährt und im Serial-Log nach exakt den Markern greppt, die beweisen, dass es passiert ist. 47+ Gates laufen vor jedem Tag. Die Zahlen unten sind das, was diese Gates auf einem AMD 5700G unter KVM gemessen haben — ein Host, nichts extrapoliert.</p>
+    <div class="toc" aria-label="Abschnitte">
+      <a href="#tabelle">Übersicht</a>
+      <a href="#paging">Modelle grösser als RAM</a>
+      <a href="#arkdb">ArkDB</a>
+      <a href="#agentdb">Agenten-DB</a>
+      <a href="#mcp">MCP-Ops</a>
+      <a href="#kvm">Syscall &amp; IPC</a>
+      <a href="#rollout">Rollout</a>
+      <a href="#audit">Audit &amp; Sealed</a>
+      <a href="#frame">Messrahmen</a>
     </div>
   </div>
 </section>
 
-<!-- ============ AUDIT ============ -->
-<section class="chapter" id="audit">
-  <div class="spawn-strip" data-cell="audit"></div>
-  <div class="ch-inner narrow">
-    <div class="ch-no">05 · Audit chain</div>
-    <h2>Prove what ran — offline.</h2>
-    <p class="prose">Every security-relevant event — spawn, stop, crash, capability
-    grant, contract refusal, every console write — becomes an immutable block in a
-    <b>Blake3 hash chain</b>, where each block's content hash <i>is</i> the next
-    block's back-link, mirrored to disk. Verification needs the drive, not the
-    running system.</p>
-    <div class="contract">
-      <div class="ct-head mono">arkctl audit · offline against the mirrored disk</div>
-      <pre>$ arkctl audit verify --store store.img --list
-<span class="m">audit chain OK: 23 blocks, head seq=22 hash=6b01c4…</span>
-
-$ printf '\x01' | dd of=store.img seek=571432 …   <span class="r"># flip ONE byte, anywhere</span>
-$ arkctl audit verify --store store.img
-<span class="r">audit verify FAILED: TAMPER: block seq=4 does not
-hash to its stored id (content was modified)</span></pre>
+<section class="section tight" id="tabelle" aria-labelledby="tab-h">
+  <div class="wrap">
+    <h2 id="tab-h" class="eyebrow" style="margin-bottom:24px">Alle Zahlen auf einen Blick</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Behauptung</th><th>Wert</th><th>Gate / Quelle</th><th>Umgebung</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="claim"><a href="#paging">6-GiB-Modell läuft unter 4-GiB-RAM-Budget komplett durch</a></td><td class="v">completed <span class="u">(3372 MiB paged-in)</span></td><td class="g">v27_gm5</td><td class="env">KVM, AMD 5700G, -m 4G</td></tr>
+          <tr><td class="claim"><a href="#paging">Page-in je 2-MiB-Fenster, inkl. blake3-Verifikation</a></td><td class="v">p50 ~6 ms <span class="u">· 104–114 MiB/s</span></td><td class="g">T-GM7 Phasen-Split</td><td class="env">KVM, release</td></tr>
+          <tr><td class="claim"><a href="#paging">Manipuliertes Fenster wird verweigert, Cell stirbt, System lebt</a></td><td class="v">verify_fail <span class="u">· keine Panik</span></td><td class="g">v27_gm5 · v27_gm6</td><td class="env">KVM + TCG</td></tr>
+          <tr><td class="claim"><a href="#paging">Eviction hält das Working-Set-Budget exakt ein</a></td><td class="v">8/8 · 4/4 <span class="u">· 1389 Evictions im Sweep</span></td><td class="g">v27_gm6</td><td class="env">KVM + TCG</td></tr>
+          <tr><td class="claim"><a href="#paging">Store v4: Extents, 48-Bit-Längen</a></td><td class="v">256 TiB <span class="u">Decke je Blob</span></td><td class="g">v27_gm4</td><td class="env">KVM + TCG · v3 byte-exakt lesbar</td></tr>
+          <tr><td class="claim"><a href="#arkdb">ArkDB Punkt-Read gegen SQLite im Linux-Gast</a></td><td class="v">0.79× <span class="u">(&lt;1 = schneller)</span></td><td class="g">bench-arkdb · golden_sqlite</td><td class="env">KVM, release beidseitig</td></tr>
+          <tr><td class="claim"><a href="#arkdb">ArkDB Group-Commit, Statement in BEGIN..COMMIT</a></td><td class="v">0.119 <span class="u">eines Einzel-Writes</span></td><td class="g">bench-arkdb (db_txn_write)</td><td class="env">KVM, release beidseitig</td></tr>
+          <tr><td class="claim"><a href="#agentdb">Agenten-DB: drei Leser cross-core bei laufendem Schreiber</a></td><td class="v">~105k reads/s <span class="u">je Leser</span></td><td class="g">T-AG1-Gate</td><td class="env">KVM</td></tr>
+          <tr><td class="claim"><a href="#agentdb">DB-Head offline beweisbar</a></td><td class="v">audit chain OK</td><td class="g">T-AG2 · arkctl db pin/diff</td><td class="env">offline, nur Disk</td></tr>
+          <tr><td class="claim"><a href="#mcp">MCP-Ops: KI deployt und verwaltet Cells ohne Mensch</a></td><td class="v">13 Tools <span class="u">· 7 read-only für Viewer</span></td><td class="g">v26_mo1 – v26_mo4</td><td class="env">KVM + TCG</td></tr>
+          <tr><td class="claim"><a href="#kvm">Syscall-Latenz gegen Linux getpid, gleicher Host</a></td><td class="v">224 vs. 1393 <span class="u">Zyklen p50</span></td><td class="g">bench-vs-linux</td><td class="env">KVM, dev, n=2</td></tr>
+          <tr><td class="claim"><a href="#kvm">IPC-Roundtrip gegen AF_UNIX</a></td><td class="v">36850 vs. 40864 <span class="u">(~10 % schneller)</span></td><td class="g">bench-vs-linux</td><td class="env">KVM, dev, n=2</td></tr>
+          <tr><td class="claim"><a href="#rollout">Drei rollierende Restarts unter Dauerlast</a></td><td class="v">802 req · 0 err</td><td class="g">Rollout-Gate (v0.23)</td><td class="env">QEMU</td></tr>
+          <tr><td class="claim"><a href="#audit">Audit-Kette erkennt ein geflipptes Byte</a></td><td class="v">TAMPER seq=4</td><td class="g">arkctl audit verify</td><td class="env">offline, nur Disk</td></tr>
+          <tr><td class="claim"><a href="#audit">Kein Klartext auf der Platte</a></td><td class="v">strings | grep -c → 0</td><td class="g">Sealed-at-rest-Gate (v0.21)</td><td class="env">QEMU</td></tr>
+        </tbody>
+      </table>
     </div>
-    <p class="prose">The honest boundary, stated exactly: the chain proves tampering
-    and gaps <b>after its last verified anchor</b>. An attacker who controls the
-    kernel before the first anchor can rewrite the story up to that point —
-    external anchoring is on the roadmap, and until then this sentence is the
-    precise edge of the claim.</p>
+    <p class="muted" style="margin-top:16px;font-size:14px">Maschinenlesbar: <a href="facts.json">facts.json</a>. TCG = QEMU-Software-Emulation (beweist Verhalten, keine Geschwindigkeit). KVM = hardware-beschleunigt (beweist beides).</p>
   </div>
 </section>
 
-<!-- ============ SEALED ============ -->
-<section class="chapter" id="sealed">
-  <div class="spawn-strip" data-cell="sealed"></div>
-  <div class="ch-inner narrow">
-    <div class="ch-no">06 · Sealed at rest</div>
-    <h2>Nothing readable on the disk.</h2>
-    <p class="prose">Every app-data body is encrypted before it is mirrored —
-    XChaCha20-Poly1305 under a key that lives only in a <b>net-free keystore
-    cell</b>, RAM-only. The gate is a command anyone can run:
-    <span class="mono">strings store.img</span> after a full write round-trip finds
-    <b>no plaintext</b>. Flip one ciphertext byte and the read fails loudly — an
-    AEAD error, never silent garbage. And credentials are injected per call by
-    the gateway: <b>the app never holds them</b>, so a fully compromised app cannot
-    leak a secret it never had.</p>
-    <div class="contract">
-      <div class="ct-head mono">the headline gate · run it yourself</div>
-      <pre>$ strings store.img | grep -c "secret note body"
-<span class="m">0</span>   <span class="dim"># the data is on disk — as ciphertext</span></pre>
+<!-- ============ PAGING ============ -->
+<section class="proof" id="paging" aria-labelledby="paging-h">
+  <div class="wrap">
+    <div class="head">
+      <h2 id="paging-h">01 · Modelle grösser als RAM</h2>
+      <div class="gate"><b>PASS</b> v27_gm4 · v27_gm5 · v27_gm6 · KVM AMD 5700G</div>
     </div>
-    <p class="caption">Honest edge: <b>at rest means the disk.</b> The in-RAM blob
-    table holds plaintext while the machine runs — the same edge as "it runs in
-    QEMU". Crash recovery is proven the same way: apply → hard reboot → the
-    cluster is still there, without re-applying anything. That gate has run on
-    every merge since v0.14.</p>
+    <div class="body">
+      <div>
+        <p>Seit v0.27 muss ein Modell nicht mehr in den Speicher passen. Das Gate gibt einer Cell ein <b>Budget von 4 GiB RAM</b> und ein <b>6-GiB-Modell</b> — und der Lauf geht bis zum Ende durch. Zwei Mechanismen tragen das, beide einzeln bewiesen.</p>
+        <p><b>Demand-Paging.</b> Das Modell wird nicht vorab geladen. Berührt die Cell einen nicht residenten Teil, löst die CPU einen Page-Fault aus; der Kernel liest das umliegende <b>2-MiB-Fenster</b> von der Platte, prüft es gegen seinen <b>blake3</b>-Hash und blendet es erst dann <b>read-only</b> ein. Ein Fenster, das nicht zu seinem Hash passt, wird nie gemappt: das Gate manipuliert eines auf der Platte, der Page-in wird verweigert, die Cell stirbt sauber, der Rest des Systems läuft weiter.</p>
+        <p><b>Eviction.</b> Jede Cell hat ein Working-Set-Budget. Ist es voll, gehen die kältesten Fenster zuerst (FIFO) — ungemappt mit <b>TLB-Shootdown</b> über alle Kerne, damit kein Kern eine veraltete Übersetzung auf einen zurückgegebenen Frame behält. Das Gate prüft den Höchstwert, nicht die Absicht: <code>max_resident</code> erreichte sein Budget exakt und überschritt es nie.</p>
+        <p><b>Store v4.</b> Darunter beschreibt das Format Blobs als <b>Extents</b> — zusammenhängende Runs auf der Platte — statt als Listen einzelner Frames (512-MiB-Blob = 1 Extent, Buchhaltung 64 B statt 1 MiB) und speichert Längen in 48 Bit. Formatdecke: 256 TiB je Blob. v3-Stores bleiben byte-exakt lesbar.</p>
+        <div class="frame"><b>Messrahmen.</b> Ein Host, KVM, AMD 5700G. «Completed» ist ein Kapazitätsbeweis, kein Geschwindigkeitsversprechen: ein Modell, das von der Platte pagt, ist langsamer als eines, das passt — eine Token-Rate dafür ist nicht veröffentlicht. 256 TiB ist, was das Format <i>adressiert</i>, nicht was getestet ist; das grösste bewiesene Modell sind 6 GiB. Eviction ist heute reines FIFO. Nächster benannter Hebel: SIMD-blake3 — der Hash ist mit ~14M Zyklen je Fenster die dickste Phase beim Page-in.</div>
+      </div>
+      <div class="term">
+        <div class="term-head">v0.27 · demand-paging + eviction · kvm · amd 5700g</div>
+        <pre><span class="dim">modell 6 GiB · ram-budget 4 GiB · -m 4G</span>
+lauf                 <span class="ok">completed</span>     <span class="dim">3372 MiB paged-in</span>
+page-in  <span class="dim">2 MiB</span>       <span class="ok">p50 ~6 ms</span>     <span class="dim">104–114 MiB/s</span>
+verify               blake3 je fenster, vor dem mapping
+mapping              read-only
+max_resident         <span class="ok">8/8 · 4/4</span>     <span class="dim">budget erreicht, nie überschritten</span>
+6-GiB-sweep          <span class="ok">durchgelaufen</span> <span class="dim">1389 evictions · 62 s · pass 2 lädt nach</span>
+tampered window      <span class="bad">verify_fail</span>   <span class="dim">cell stirbt · system lebt · keine panik</span>
+store v4             48-bit längen  <span class="dim">256 TiB decke · extents</span>
+
+<span class="ok">→ modellgrösse ist durch die platte begrenzt, nicht durch ram</span></pre>
+      </div>
+    </div>
   </div>
 </section>
 
 <!-- ============ ARKDB ============ -->
-<section class="chapter" id="arkdb">
-  <div class="spawn-strip" data-cell="arkdb"></div>
-  <div class="ch-inner narrow">
-    <div class="ch-no">07 &middot; ArkDB vs. SQLite</div>
-    <h2>Faster than SQLite on point reads. The rest named, not hidden.</h2>
-    <p class="prose">ArkDB is a database built <i>with the SDK</i>, as a contracted
-    cell — and it was measured against SQLite running in a Linux guest on the same
-    host: KVM, Ryzen 5700G, release builds on both sides. The point lookup started
-    the sprint <b>1624&times; slower</b>, reached parity at 1.03&times;, and now
-    stands at <b>0.79&times;</b> — <b>faster than SQLite</b> on point reads —
-    and it got there by decomposition rather than guesswork: 78 syscalls per read
-    collapsed into one batched syscall, then page cache + cursor, IPC slice
-    donation in the scheduler, KeyScan on the primary key, streamed select.
-    Group commit is new: statements inside
-    <span class="mono">BEGIN..COMMIT</span> now cost <b>0.119</b> of a single
-    write (~8.4&times; cheaper) — and honestly, SQLite groups even harder at 0.04,
-    so per statement inside a transaction we sit at <b>53.6&times;</b>.
-    Scans remain <b>3.55&times;</b> slower, and that remainder is structural:
-    distributed B-tree descents against one contiguous leaf. Single writes are
-    <b>17.89&times;</b> slower, and that gap is the <b>durable root commit</b>
-    (ADR-025) — SQLite in an initramfs pays no persistence at all, so this is a
-    named asymmetry between two different promises, not a deficit we are hiding.
-    Optimisations that did not measure were reverted instead of shipped, and the
-    golden suite runs against real SQLite: identical semantics is the proof, the
-    numbers are only the price.</p>
-    <div class="term-frame">
-      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">arkdb v0.25 &middot; KVM &middot; AMD 5700G &middot; release both sides &middot; &times; sqlite, lower is better &middot; arkdb_dd753ee_2026-09-24</span></div>
-      <pre class="mono term-body" style="min-height:0"><span class="dim">                    R      (1.0 = parity with sqlite)</span>
-kv_read  <span class="dim">point</span>      <span class="p">0.79</span>   <span class="dim">faster than sqlite &middot; 1624&times; at sprint start</span>
-scan                3.55   <span class="dim">structural: b-tree descents vs. one leaf</span>
-write    <span class="dim">single</span>    17.89   <span class="dim">durable root commit (adr-025)</span>
-txn      <span class="dim">per stmt</span>  53.6    <span class="dim">group commit 0.119 of single write &middot; sqlite: 0.04</span>
-
-<span class="p">&rarr; lookup faster than sqlite &middot; write gap is persistence sqlite never paid</span></pre>
+<section class="proof" id="arkdb" aria-labelledby="arkdb-h">
+  <div class="wrap">
+    <div class="head">
+      <h2 id="arkdb-h">02 · ArkDB gegen SQLite</h2>
+      <div class="gate"><b>PASS</b> golden_sqlite · bench-arkdb · KVM · release beidseitig</div>
     </div>
-    <p class="caption">The honest frame: SQLite ran <b>in the initramfs</b>, where a
-    commit never has to survive the machine — comparing it to a durable root commit
-    compares two different promises, and we say which. Every figure above is
-    gate-proven, and the golden suite against real SQLite is what makes the
-    comparison legitimate in the first place: <b>same semantics, then talk about
-    speed.</b></p>
+    <div class="body">
+      <div>
+        <p>ArkDB ist eine Datenbank, die <i>mit dem SDK</i> gebaut wurde — als Cell mit Contract — und gegen SQLite in einem Linux-Gast auf demselben Host gemessen: KVM, Ryzen 5700G, Release-Builds auf beiden Seiten. Der Punkt-Read startete den Sprint <b>1624× langsamer</b> und steht jetzt bei <b>0.79×</b> — schneller als SQLite.</p>
+        <p>Der Weg dahin war Zerlegung, nicht Raten: 78 Syscalls je Read auf einen gebündelten Syscall eingedampft, Page-Cache und Cursor in der Cell, IPC-Slice-Donation im Scheduler, KeyScan auf dem Primärschlüssel, Streamed-Select. Optimierungen, die nicht gemessen haben, wurden zurückgenommen statt ausgeliefert.</p>
+        <p><b>Group-Commit.</b> Statements innerhalb von <code>BEGIN..COMMIT</code> kosten <b>0.119</b> eines Einzel-Writes (~8.4× günstiger). SQLite gruppiert härter (0.04) — je Statement in einer Transaktion liegt ArkDB also bei 53.6×, und das steht hier.</p>
+        <div class="frame"><b>Benannte Asymmetrie.</b> Scans bleiben <b>3.55×</b> langsamer — strukturell: verteilte B-Baum-Abstiege gegen ein zusammenhängendes Blatt. Einzel-Writes sind <b>17.89×</b> langsamer, und das ist der <b>durable Root-Commit</b> (ADR-025): SQLite im initramfs bezahlt keine Persistenz. Zwei verschiedene Versprechen, nicht ein verstecktes Defizit. Die Golden-Suite gegen echtes SQLite ist, was den Vergleich überhaupt legitimiert: gleiche Semantik, dann über Geschwindigkeit reden.</div>
+      </div>
+      <div class="term">
+        <div class="term-head">arkdb · kvm · amd 5700g · release beidseitig · × sqlite, kleiner ist besser</div>
+        <pre><span class="dim">                     R      (1.0 = gleichstand mit sqlite)</span>
+kv_read  <span class="dim">punkt</span>       <span class="ok">0.79</span>   <span class="dim">schneller als sqlite · 1624× bei sprintstart</span>
+scan                 3.55   <span class="dim">strukturell: b-baum-abstiege vs. ein blatt</span>
+write    <span class="dim">einzeln</span>    17.89   <span class="dim">durable root-commit (adr-025)</span>
+txn      <span class="dim">je stmt</span>    53.6    <span class="dim">group-commit 0.119 eines writes · sqlite: 0.04</span>
+
+<span class="ok">→ lookup schneller als sqlite · write-gap ist persistenz, die sqlite nie zahlt</span></pre>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- ============ LARGER THAN RAM (v0.27) ============ -->
-<section class="chapter" id="largerthanram">
-  <div class="spawn-strip" data-cell="paging"></div>
-  <div class="ch-inner narrow">
-    <div class="ch-no">08 &middot; Models larger than RAM</div>
-    <h2>A 6 GiB model under a 4 GiB budget. Run to completion.</h2>
-    <p class="prose">Since <span class="mono">v0.27</span> a model no longer has to
-    fit in memory. The gate gives a cell a <b>4 GiB RAM budget</b> and a
-    <b>6 GiB model</b>, and the model runs through to the end — on KVM, not the
-    emulator. Two mechanisms make that possible, and both are proven separately.</p>
-    <p class="prose"><b>Demand paging.</b> The model is not loaded up front. When
-    the cell touches a part that is not resident, the CPU raises a page fault;
-    the kernel reads the surrounding <b>2 MiB window</b> from disk, checks it
-    against its <b>Blake3</b> hash, and only then maps it <b>read-only</b> into the
-    cell. A window that does not match its hash is never mapped: the gate
-    manipulates one on disk, the page-in is refused, <b>the cell dies cleanly, and
-    the rest of the system keeps running.</b></p>
-    <p class="prose"><b>Eviction.</b> Every cell has a working-set budget. When it
-    is full, the coldest windows go first (FIFO) — unmapped with a
-    <b>TLB shootdown</b>, so no core keeps a stale translation to a frame that has
-    been handed back. The gates check the peak, not the intent:
-    <span class="mono">max_resident</span> reached its budget exactly and never went
-    past it — <b>8 of 8</b> and <b>4 of 4</b>.</p>
-    <div class="term-frame">
-      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">v0.27 &middot; demand paging + eviction &middot; KVM &middot; AMD 5700G</span></div>
-      <pre class="mono term-body" style="min-height:0"><span class="dim">model 6 GiB &middot; ram budget 4 GiB</span>
-run                 <span class="p">completed</span>
-page-in  <span class="dim">2 MiB</span>      <span class="p">p50 ~6 ms</span>   <span class="dim">104&ndash;114 MiB/s</span>
-verify              blake3 per window, before mapping
-mapping             read-only
-max_resident        <span class="p">8/8 &middot; 4/4</span>   <span class="dim">budget reached, never exceeded</span>
-tampered window     <span class="r">refused</span>    <span class="dim">cell dies &middot; system lives</span>
-
-<span class="p">&rarr; model size is bounded by disk, not by ram</span></pre>
+<!-- ============ AGENT DB ============ -->
+<section class="proof" id="agentdb" aria-labelledby="agentdb-h">
+  <div class="wrap">
+    <div class="head">
+      <h2 id="agentdb-h">03 · Agenten-DB: Leser warten nicht auf den Schreiber</h2>
+      <div class="gate"><b>PASS</b> T-AG1 · T-AG2 · KVM · cross-core</div>
     </div>
-    <p class="caption">The honest frame: <b>one host, KVM, AMD 5700G.</b> The
-    page-in figures are what this machine and this disk image delivered, not a
-    promise for other storage. "Completed" means the run went through end to end
-    under the budget — it is a capacity proof, not a speed claim: a model that
-    pages in from disk is slower than one that fits, and we have not published
-    a token rate for it. The eviction policy is plain FIFO today; smarter
-    policies would be an optimisation, and would get measured before they get
-    claimed.</p>
+    <div class="body">
+      <div>
+        <p>Die Agenten-Datenbank lässt Leser aus einem <b>MAP-Snapshot</b> arbeiten: eine konsistente, read-only Sicht, in die lesende Cell gemappt, während der Schreiber den nächsten Stand produziert. Das Gate fährt <b>drei Leser auf getrennten Kernen</b> gegen einen Schreiber, der nie anhält — jeder Leser hält <b>~105k reads/s</b>.</p>
+        <p>Welcher Stand aktuell ist, ist keine Vertrauensfrage: der DB-Head wird als <code>KIND_ROOT_PIN</code> in die Audit-Kette geschrieben. <code>arkctl db pin</code> und <code>arkctl db diff</code> beweisen den Stand <b>offline</b>, allein von der Platte.</p>
+        <div class="frame"><b>Messrahmen und Abbruchkriterium.</b> Drei Leser sind das Bewiesene — keine gefundene Decke, keine gezeichnete Skalierungskurve. Dieselbe Messung hat einen Entwurf getötet: Mapping-Rotation je Commit kostet 68–1713× einer IPC-Lesung (Break-even ~116 Lesungen je Commit und Leser). Lese-Replikate werden deshalb <i>nicht</i> als Rotation-je-Commit gebaut; das Design ist offen. Cross-Core-IPC verweigert der Kernel — Leser auf fremden Kernen gehen nur über MAP.</div>
+      </div>
+      <div class="term">
+        <div class="term-head">v0.27 · agenten-db · kvm · cross-core</div>
+        <pre><span class="dim">schreiber läuft durchgehend</span>
+leser 1              <span class="ok">~105k reads/s</span>
+leser 2              <span class="ok">~105k reads/s</span>
+leser 3              <span class="ok">~105k reads/s</span>
+MAP-lesen            0.41× einer ipc-lesung
+head                 <span class="ok">offline bewiesen</span>  <span class="dim">KIND_ROOT_PIN in der audit-kette</span>
+
+<span class="ok">→ snapshot-reads skalieren über kerne · head ist ohne laufendes system prüfbar</span></pre>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- ============ AGENT DB (v0.27) ============ -->
-<section class="chapter" id="agentdb">
-  <div class="spawn-strip" data-cell="agentdb"></div>
-  <div class="ch-inner narrow">
-    <div class="ch-no">09 &middot; Agent DB</div>
-    <h2>Readers do not wait for the writer.</h2>
-    <p class="prose">The agent database lets readers work from a
-    <b>MAP snapshot</b>: a consistent, read-only view mapped into the reading
-    cell, while the writer carries on producing the next state. The gate runs
-    <b>three readers on separate cores</b> against a writer that never stops —
-    each reader holds <b>~105k reads/s</b>. And which state is current is not a
-    matter of trust: the database head is recorded in the
-    <a href="#audit" style="color:var(--sage)">audit chain</a>, so it can be proven
-    <b>offline</b>, from the disk alone.</p>
-    <div class="term-frame">
-      <div class="term-head mono"><span class="td"></span><span class="td"></span><span class="td"></span><span class="term-title">v0.27 &middot; agent db &middot; KVM &middot; cross-core</span></div>
-      <pre class="mono term-body" style="min-height:0"><span class="dim">writer running throughout</span>
-reader 1            <span class="p">~105k reads/s</span>
-reader 2            <span class="p">~105k reads/s</span>
-reader 3            <span class="p">~105k reads/s</span>
-head                proven offline via audit chain
-
-<span class="p">&rarr; snapshot reads scale across cores &middot; head is checkable without the running system</span></pre>
+<!-- ============ MCP OPS ============ -->
+<section class="proof" id="mcp" aria-labelledby="mcp-h">
+  <div class="wrap">
+    <div class="head">
+      <h2 id="mcp-h">04 · MCP-Ops: eine KI betreibt das System</h2>
+      <div class="gate"><b>PASS</b> v26_mo1 · v26_mo2 · v26_mo3 · v26_mo4 · KVM</div>
     </div>
-    <p class="caption">Same frame as everywhere on this page: one host, the
-    figures the gate measured, nothing extrapolated. Three readers is what was
-    proven — not a ceiling we have found, and not a scaling curve we have
-    drawn.</p>
+    <div class="body">
+      <div>
+        <p><b>13 MCP-Tools</b> auf <code>gw-admin POST /mcp :9443</code> — hinter Login, RBAC und Audit, nicht auf dem App-Tool-Gateway. Bearer ist das acp-auth-Token, der Kanal fliesst in die Token-Ableitung ein (Cookie ≠ Bearer). Die Rollenmatrix ist default-deny: Viewer sieht 7 Tools read-only, Operator und Admin alle 13.</p>
+        <p><code>deploy_diff</code> liefert die geplanten Operationen; <code>deploy_apply</code> verlangt sie als <code>expect_ops</code> zurück und bricht bei Drift ab. Lifecycle (stop, start, restart, rollout) gelten dieselben Schutzregeln wie in der Console — gw-admin darf sich selbst nicht stoppen, der Kernel verweigert das, nicht die Route. Jede Mutation steht als Audit-Block, <b>bevor</b> sie wirkt.</p>
+        <p>Der Schalter ist persistent: Console-Karte, Standard AN, überlebt SIGKILL und Reboot. AUS liefert <code>403 ARK_MCP_DISABLED</code>.</p>
+        <div class="frame"><b>Was bewiesen ist.</b> Die Demo (<code>make mcp-ops-demo</code>) lässt eine KI eine Cell deployen und ihre Logs lesen — ohne Console, ohne Menschen; danach ein Lifecycle-Durchlauf. Vier Gates grün unter KVM beim Tag. Zwei Vertrauensstufen bleiben bewusst getrennt: <code>gw-mcp</code> ist das Tool-Gateway für App-Daten, <code>gw-admin /mcp</code> die Control Plane.</div>
+      </div>
+      <div class="term">
+        <div class="term-head">v0.26 · mcp-ops · gw-admin :9443/mcp</div>
+        <pre><span class="dim">rolle          tools   schreibend</span>
+viewer         7       <span class="dim">nein (read-only)</span>
+operator       13      ja
+admin          13      ja
+
+<span class="k">deploy_diff</span>    → ops[]                      <span class="dim">mutiert nichts</span>
+<span class="k">deploy_apply</span>   expect_ops ≠ ops → <span class="bad">abbruch</span>   <span class="dim">drift-check</span>
+<span class="k">cell_stop</span>      gw-admin → <span class="bad">refused</span>          <span class="dim">kernel: SYS_CELL_STOP self</span>
+<span class="k">mcp_switch</span>     off → <span class="bad">403 ARK_MCP_DISABLED</span>  <span class="dim">überlebt SIGKILL + reboot</span>
+
+<span class="ok">DEMO: KI hat Cell deployt und Logs gelesen — ohne Konsole</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ KVM BENCH ============ -->
+<section class="proof" id="kvm" aria-labelledby="kvm-h">
+  <div class="wrap">
+    <div class="head">
+      <h2 id="kvm-h">05 · Syscall und IPC gegen Linux, gleicher Host</h2>
+      <div class="gate"><b>GEMESSEN</b> KVM · AMD · dev-Profil · n=2</div>
+    </div>
+    <div class="body">
+      <div>
+        <p>Der erste KVM-Boot war zugleich die erste Messung, die etwas über Geschwindigkeit sagt: derselbe Kernel, aber die CPU führt ihn aus. Arkane und Linux wurden auf derselben Maschine, mit demselben Zähler, im selben Lauf gemessen.</p>
+        <p>Die Messung korrigiert uns auch. Unter TCG war der IPC-Roundtrip <b>3.5× langsamer</b> als Linux — das war die Arbeitshypothese. Unter echter Virtualisierung ist derselbe Pfad 10 % schneller: ein Emulationsartefakt. Beim Serving-Pfad entfielen <b>80–89 %</b> der ersten KVM-Latenz auf unsere eigene Debug-Serial-Ausgabe; ohne sie liegt Arkane bei 0.98–1.34× Linux p50, Parität auf dem Public-Tree.</p>
+        <div class="frame"><b>Messrahmen.</b> Ein Host, dev-Profil, n=2 — ein erster Datenpunkt, keine Benchmark-Suite. Keine Aussage über andere Hardware oder Release-Builds folgt daraus. Was es klärt, ist die Richtung: der Syscall-Pfad ist wirklich kurz. Der erste KVM-Boot fand drei Kernel-Bugs, die TCG durchgewinkt hatte (IDT-Lücken, MSI-X swapgs, SS.RPL) — 47 grüne Gates, und die Bugs waren trotzdem da, weil die Umgebung freundlicher war als die Realität.</div>
+      </div>
+      <div class="term">
+        <div class="term-head">erster kvm-lauf · amd host · dev-profil · p50 zyklen</div>
+        <pre><span class="dim">                   arkane    linux</span>
+syscall              <span class="ok">224</span>     1393   <span class="dim">getpid</span>
+ipc round-trip     <span class="ok">36850</span>    40864   <span class="dim">af_unix</span>
+
+<span class="dim">serving-pfad · boot-trace aus · R = arkane/linux p50</span>
+public-tree        <span class="ok">0.977</span>   <span class="dim">parität</span>
+static-json        1.224
+mcp-notes-search   1.285
+mcp-echo           1.344
+
+<span class="ok">→ syscall ~6× schneller · ipc ~10 % schneller · serving 1.0–1.35×</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ROLLOUT ============ -->
+<section class="proof" id="rollout" aria-labelledby="rollout-h">
+  <div class="wrap">
+    <div class="head">
+      <h2 id="rollout-h">06 · Update ohne Ausfall</h2>
+      <div class="gate"><b>PASS</b> Rollout-Gate v0.23 · QEMU</div>
+    </div>
+    <div class="body">
+      <div>
+        <p>Das Gate hält einen Client, der Requests an die Inference-Replica-Gruppe feuert, <b>während</b> <code>arkctl cell rollout</code> sie neu startet — dreimal hintereinander. Das Gateway routet round-robin auf die lebende Replica; der Rollout ist ready-gated, die Gruppe fällt nie auf null. Ergebnis über drei Rollouts unter Dauerfeuer: <b>802 Requests, 0 fehlgeschlagene Antworten.</b></p>
+        <div class="frame"><b>Was das Gate greppt:</b> die Serial-Marker START / STEP / READY / DONE, nie ABORT — kein Dashboard-Screenshot. Boot bis zum konvergierten Cluster unbeaufsichtigt: 7.4 s (TCG). Heute heisst HA eine Maschine; Multi-Node ist Roadmap.</div>
+      </div>
+      <div class="term">
+        <div class="term-head">acceptance gate · rollout unter last</div>
+        <pre><span class="p">$ </span>arkctl cell rollout inference    <span class="dim"># ×3, client feuert durchgehend</span>
+<span class="dim">ROLLOUT_START · step 1: alive_before=2 · ready · step 2: alive_before=2 · ready · DONE</span>
+<span class="ok">requests: 802 · errors: 0 · min alive: 1 (floor N−1)</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ AUDIT / SEALED ============ -->
+<section class="proof" id="audit" aria-labelledby="audit-h">
+  <div class="wrap">
+    <div class="head">
+      <h2 id="audit-h">07 · Audit-Kette und Verschlüsselung at rest</h2>
+      <div class="gate"><b>PASS</b> arkctl audit verify · Sealed-Gate v0.21 · offline</div>
+    </div>
+    <div class="body">
+      <div>
+        <p>Jedes sicherheitsrelevante Ereignis — Spawn, Stop, Crash, Capability-Grant, Contract-Verweigerung, jeder Console- oder MCP-Write — wird ein unveränderlicher Block in einer <b>blake3-Hash-Kette</b>, bei der der Content-Hash eines Blocks der Back-Link des nächsten ist, auf die Platte gespiegelt. Die Verifikation braucht die Platte, nicht das laufende System.</p>
+        <p>App-Daten werden vor dem Spiegeln verschlüsselt — XChaCha20-Poly1305 unter einem Schlüssel, der nur in einer <b>netzfreien Keystore-Cell</b> lebt, RAM-only. Der Beweis ist ein Befehl, den jeder ausführen kann: <code>strings store.img</code> nach einem vollen Schreib-Roundtrip findet keinen Klartext.</p>
+        <div class="frame"><b>Die genaue Kante.</b> Die Kette beweist Manipulation und Lücken <b>nach ihrem letzten verifizierten Anker</b>; wer den Kernel vor dem ersten Anker kontrolliert, kann die Geschichte bis dahin umschreiben — externes Anchoring ist Roadmap. «At rest» heisst die Platte: die Blob-Tabelle im RAM hält Klartext, solange die Maschine läuft. Die Audit-Kette selbst ist bewusst Klartext.</div>
+      </div>
+      <div class="term">
+        <div class="term-head">arkctl audit · offline gegen die gespiegelte platte</div>
+        <pre><span class="p">$ </span>arkctl audit verify --store store.img --list
+<span class="ok">audit chain OK: 23 blocks, head seq=22 hash=6b01c4…</span>
+
+<span class="p">$ </span>printf '\x01' | dd of=store.img seek=571432 …   <span class="dim"># ein byte flippen, irgendwo</span>
+<span class="p">$ </span>arkctl audit verify --store store.img
+<span class="bad">audit verify FAILED: TAMPER: block seq=4 does not
+hash to its stored id (content was modified)</span>
+
+<span class="p">$ </span>strings store.img | grep -c "secret note body"
+<span class="ok">0</span>   <span class="dim"># die daten liegen auf der platte — als chiffrat</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FRAME ============ -->
+<section class="section" id="frame" aria-labelledby="frame-h">
+  <div class="wrap read">
+    <div class="eyebrow">Messrahmen</div>
+    <h2 id="frame-h">Wie gemessen wurde — und was daraus nicht folgt.</h2>
+    <ul class="facts" style="margin-top:24px">
+      <li><span class="v">Host</span><span>Ein Desktop-PC, AMD Ryzen 5700G, KVM. Kein Labor, kein Cluster.</span></li>
+      <li><span class="v">TCG vs. KVM</span><span>TCG (QEMU-Emulation) beweist Verhalten, nie Geschwindigkeit — es hat uns zweimal belogen (IPC 3.5× «langsamer», blake3 im dev-Profil). Zahlen zur Geschwindigkeit stammen ausschliesslich von KVM.</span></li>
+      <li><span class="v">Profile</span><span>dev- und release-Verhältnisse werden nie gemischt. ArkDB: release beidseitig. Syscall/IPC: dev, n=2, als erster Datenpunkt gekennzeichnet.</span></li>
+      <li><span class="v">Gates</span><span>Jedes Gate bootet das echte Image, fährt das Feature Ende-zu-Ende und greppt Serial-Marker. Gates für Verhaltensänderungen (Eviction, Retention) werden mit-modernisiert, damit kein Gate ein Fehlen beweist, das nicht mehr existiert.</span></li>
+      <li><span class="v">Reverts</span><span>Optimierungen ohne messbaren Effekt werden zurückgenommen, nicht als Verbesserung ausgeliefert. Ein ehrlicher Fehlerbericht steht über einer schmeichelhaften Revision.</span></li>
+      <li><span class="v">Nicht gemessen</span><span>Token-Rate beim Paging von der Platte. Spitzenkapazität im Serving-Pfad. Mehr als drei Leser auf der Agenten-DB. Bare Metal.</span></li>
+    </ul>
   </div>
 </section>
 
 </main>
 
-<footer id="coda">
-  <p class="coda-line">What does not exist<br><em>cannot break.</em></p>
-  <div class="colophon"><a href="https://github.com/arkane-studio/arkane-os">github</a> &nbsp;·&nbsp; arkane@2026</div>
+<footer class="footer">
+  <div class="wrap">
+    <span class="claim">Was nicht existiert, <b>kann nicht brechen.</b></span>
+    <span><a href="https://github.com/arkane-studio/arkane-os" rel="noopener">github.com/arkane-studio/arkane-os</a> · Arkane Studio, Schweiz · 2026</span>
+  </div>
 </footer>
 
-<script src="cells.js"></script>
 <script src="site.js"></script>
-
 </body>
 </html>

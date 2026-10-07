@@ -1,9 +1,10 @@
 {
   "name": "arkane-website",
-  "version": "1.0.0",
-  "description": "ARKANE System Interface",
+  "version": "2.0.0",
+  "description": "Arkane OS — Website (statisch, kein Build-Step)",
   "scripts": {
     "build": "echo 'No build needed'",
-    "test": "node tests/scroll-behavior.test.js"
+    "test": "node tests/site.test.js",
+    "serve": "python3 -m http.server 8088"
   }
 }
