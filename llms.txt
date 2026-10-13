@@ -4,14 +4,15 @@
 
 Sprache: Deutsch. Positionierung: beweisbar statt versprochen. Zielgruppe: Entwickler und KI-Agenten.
 
-## Belegte Fakten v0.27 (Wert · Gate · Umgebung)
+## Belegte Fakten v0.27 (Wert · Gate · Umgebung) — Stand 13.10.2026, inkl. nach dem Tag gemergter, KVM-belegter Tranchen (PRs #198–#201, #211)
 
 - 6-GiB-Modell läuft unter 4-GiB-RAM-Budget komplett durch (3372 MiB paged-in) · v27_gm5 · KVM
-- Demand-Paging: #PF → 2-MiB-Fenster von Disk → blake3-verifiziert → read-only gemappt; p50 ~6 ms, 104–114 MiB/s · T-GM7 · KVM
+- Demand-Paging: #PF → 2-MiB-Fenster von Disk → blake3-verifiziert → read-only gemappt; 6-GiB-Sweep unter Speicherdruck 51.0 s, 120 MiB/s, 1390 Evictions · v27_gm6 (KVM-Lauf 13.10., PR #211)
+- Evict-Ahead (T-GM10, PR #199): Page-in avg −24 %, p90 −28 % gegenüber T-GM9; Druck-Skips 1089 → 8 · GEMESSEN T-GM10 tail_report · KVM
 - Manipuliertes Fenster wird verweigert; Cell stirbt sauber, System lebt · v27_gm5/gm6
-- FIFO-Eviction mit TLB-Shootdown, Working-Set-Budget je Cell: 8/8 und 4/4, 1389 Evictions im 6-GiB-Sweep · v27_gm6
+- FIFO-Eviction mit TLB-Shootdown, Working-Set-Budget je Cell: 8/8 und 4/4, erreicht und nie überschritten · v27_gm6
 - Store v4: Extents, 48-Bit-Längen = 256-TiB-Decke je Blob · v27_gm4
-- ArkDB vs. SQLite im Linux-Gast (KVM, release beidseitig): kv_read 0.79× (schneller), scan 3.55×, write 17.89× (durable Root-Commit, benannte Asymmetrie), Group-Commit 0.119 je Statement
+- ArkDB vs. SQLite im Linux-Gast (KVM, release beidseitig, Lauf 13.10., PR #201): kv_read 0.79× (schneller), scan 1.63× (vorher 3.55×, T-DB19 Seiten-Cache PR #200), Einzel-Write 25.4× im Standard (jeder Commit durabel: Root-Write + FLUSH vor der Antwort, T-DB20) bzw. 2.61× im Opt-in PRAGMA synchronous = NORMAL; Group-Commit 0.096 eines Einzel-Writes je Statement (SQLite 0.042). Benannte Asymmetrie: SQLite läuft im Bench im Gast ohne Persistenzkosten (initramfs). «Durabel» = Root stabil; Bodies vor der Antwort durabel ist T-DB21, geplant. Der T-DB19-Lauf im dev-Profil beidseitig mass scan 0.92× / kv_read 0.74× — dev/release nicht gemischt.
 - Agenten-DB: 3 Leser à ~105k reads/s cross-core bei laufendem Schreiber (MAP-Snapshot); Head offline via Audit-Kette (KIND_ROOT_PIN) · T-AG1/AG2 · KVM
 - MCP-Ops: 13 Tools auf gw-admin POST /mcp :9443; Bearer = acp-auth-Token; Viewer 7 read-only, Operator/Admin 13; deploy_apply mit expect_ops-Drift-Check; Audit vor Wirkung; persistenter Schalter (default AN, AUS = 403 ARK_MCP_DISABLED) · v26_mo1–mo4
 - Syscall p50 224 vs. 1393 Zyklen (Linux getpid), IPC-Roundtrip 36850 vs. 40864 (AF_UNIX) · KVM, dev, n=2 · erster Datenpunkt
@@ -22,7 +23,8 @@ Sprache: Deutsch. Positionierung: beweisbar statt versprochen. Zielgruppe: Entwi
 
 ## Geplant (nicht gebaut)
 
-- SIMD-blake3 beim Page-in (Hash ist dickste Phase, ~14M Zyklen je Fenster)
+- T-DB21: Bodies vor der Antwort durabel («Schweizer Variante vollständig»); Owner-Entscheid offen
+- T-GM11: Rest der Sweep-Wanduhr ausserhalb des Page-in-Pfads zuordnen; PR #212 offen, KVM ausstehend
 - N4 Head-Bindung im SDK (EU-AI-Act Art. 12, Frist 2.12.2027)
 - Egress-Caps; KV-Cache als OS-Objekt (später)
 - Post-1.0: Bare Metal, IOMMU, TPM, Multi-Node

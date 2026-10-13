@@ -62,10 +62,18 @@ for (const f of STUBS) {
   assert.match(html, /name="robots" content="noindex"/, `${f}: noindex`);
 }
 
-// Zahlen-Konsistenz: die vier Kennzahlen der Startseite stehen auch auf der Beweisseite.
+// Zahlen-Konsistenz: die Kennzahlen der Startseite (KPI-Karten + Roadmap-Zeile «nach v0.27») stehen auch auf der Beweisseite.
 const proof = read('proof.html');
-for (const n of ['6 GiB', '~6 ms', '0.79', '13 Tools', '802', '224', '1393', '0.119', '105k', '256 TiB', '8/8']) {
+for (const n of ['6 GiB', '120 MiB/s', '51.0 s', '1390', '0.79', '13 Tools', '802', '224', '1393', '105k', '256 TiB', '8/8',
+                 '1089 → 8', '−24 %', '−28 %', '1.63×', '25.4×', '2.61×', '0.096']) {
   assert.ok(proof.includes(n), `proof.html: Zahl fehlt → ${n}`);
+}
+// Überholte Zahlen dürfen nirgends mehr stehen (ersetzt, nicht doppelt).
+for (const f of [...PAGES, 'facts.json', 'llms.txt']) {
+  const t = read(f);
+  for (const stale of ['p50 ~6 ms', '104–114 MiB/s', '17.89', '0.119 eines', '53.6', '1389 Evictions', '62 s']) {
+    assert.ok(!t.includes(stale), `${f}: überholte Zahl steht noch → ${stale}`);
+  }
 }
 
 console.log(`PASS ${PAGES.length} Seiten, ${STUBS.length} Weiterleitungen, ${checked} interne Referenzen geprüft`);

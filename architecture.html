@@ -158,7 +158,7 @@
       </div>
       <div class="grid" style="gap:16px">
         <div class="card"><h3>Blobs &amp; WAL</h3><p>Die persistence-Cell führt den Blob-Store — nicht der Kernel. Identischer Inhalt wird einmal gespeichert; ein Modell oder Snapshot mappt read-only in N Consumer-Cells ohne Kopie. Darüber ein blake3-verketteter WAL: <code>apply → reboot → Zustand intakt</code>, seit v0.14 auf jedem Merge bewiesen.</p></div>
-        <div class="card"><h3>Demand-Paging &amp; Store v4 <span class="pill ok">v0.27</span></h3><p>Ein Modell bleibt auf der Platte, bis es berührt wird: Page-Fault → 2-MiB-Fenster lesen → blake3 prüfen → read-only mappen. Working-Set-Budget je Cell, FIFO-Eviction mit TLB-Shootdown. Store v4 beschreibt Blobs als Extents mit 48-Bit-Längen: 256 TiB Decke. <a href="proof.html#paging">6 GiB unter 4 GiB bewiesen →</a></p></div>
+        <div class="card"><h3>Demand-Paging &amp; Store v4 <span class="pill ok">v0.27</span></h3><p>Ein Modell bleibt auf der Platte, bis es berührt wird: Page-Fault → 2-MiB-Fenster lesen → blake3 prüfen → read-only mappen. Working-Set-Budget je Cell, FIFO-Eviction mit TLB-Shootdown, seit T-GM10 mit Evict-Ahead. Store v4 beschreibt Blobs als Extents mit 48-Bit-Längen: 256 TiB Decke. <a href="proof.html#paging">6 GiB unter 4 GiB bewiesen →</a></p></div>
         <div class="card"><h3>Sealed at rest</h3><p>Sensible Stores werden auf dem Storage-Pfad verschlüsselt (XChaCha20-Poly1305), Data-Keys je Scope, umhüllt von einer netzfreien Keystore-Cell, deren KEK nie die Platte berührt. Manifeste referenzieren Secrets nur per Name — weder Operator noch App sehen den Schlüssel. <a href="proof.html#audit">strings-Beweis →</a></p></div>
       </div>
     </div>
@@ -204,7 +204,8 @@
       <li><span class="v bad">nicht da</span><span>GPU. KI-Rechnen läuft CPU-only in der Cell; grosse Modelle sind Batch-Agenten, interaktive Inferenz kommt per API durchs Gateway.</span></li>
       <li><span class="v bad">nicht da</span><span>Egress-Caps (Ziel-Whitelist für ausgehende Verbindungen) und Log-Retention-Policy — beides geplant, Owner-Entscheide offen.</span></li>
       <li><span class="v">begrenzt</span><span>Sealing deckt ausgewählte Stores, nicht jedes Byte; die Audit-Kette ist bewusst Klartext. Externes Anchoring der Kette ist Roadmap.</span></li>
-      <li><span class="v">begrenzt</span><span>Eviction ist reines FIFO. Page-in-Hash ist die dickste Phase; SIMD-blake3 ist der nächste benannte Hebel, nicht gemessen.</span></li>
+      <li><span class="v">begrenzt</span><span>Eviction ist reines FIFO, seit T-GM10 mit Evict-Ahead unter Druck. SIMD-blake3 ist gemergt (T-GM9); der Rest der Sweep-Wanduhr liegt ausserhalb des gemessenen Page-in-Pfads und ist noch nicht zugeordnet (T-GM11, offen).</span></li>
+      <li><span class="v">begrenzt</span><span>ArkDB «durabel» heisst heute: der Root ist bei jedem Commit gespült, die Seiten folgen asynchron über die Spiegel-Runde. Bodies vor der Antwort durabel (T-DB21) ist geplant, nicht gebaut.</span></li>
     </ul>
   </div>
 </section>

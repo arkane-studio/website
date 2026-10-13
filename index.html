@@ -50,7 +50,7 @@
 
 <section class="section tight" aria-labelledby="kpi-h">
   <div class="wrap">
-    <h2 id="kpi-h" class="eyebrow" style="margin-bottom:24px">Vier Zahlen aus v0.27 — alle mit Gate</h2>
+    <h2 id="kpi-h" class="eyebrow" style="margin-bottom:24px">Vier Zahlen aus v0.27 und danach — alle mit Gate</h2>
     <div class="grid c4">
       <a class="kpi" href="proof.html#paging">
         <span class="n">6<small>GiB</small></span>
@@ -58,9 +58,9 @@
         <span class="g"><b>PASS</b> v27_gm5 · v27_gm6 · KVM</span>
       </a>
       <a class="kpi" href="proof.html#paging">
-        <span class="n">~6<small>ms</small></span>
-        <span class="l">Page-in p50 je 2-MiB-Fenster, blake3-verifiziert · 104–114 MiB/s</span>
-        <span class="g"><b>GEMESSEN</b> T-GM7 Phasen-Split · KVM</span>
+        <span class="n">120<small>MiB/s</small></span>
+        <span class="l">6-GiB-Sweep unter Speicherdruck in 51.0 s, 1390 Evictions, jedes Fenster blake3-verifiziert</span>
+        <span class="g"><b>PASS</b> v27_gm6 · KVM · 13.10.</span>
       </a>
       <a class="kpi" href="proof.html#arkdb">
         <span class="n">0.79<small>×</small></span>
@@ -131,7 +131,7 @@
     <div class="section-head">
       <div class="eyebrow">Stand &amp; Roadmap</div>
       <h2 id="roadmap-h">Bewiesen heisst getaggt mit grünen Gates. Geplant heisst geplant.</h2>
-      <p>Nichts unterhalb der Linie wird beansprucht. Ziel 1.0: ein fertiges KI-OS, das unter QEMU/KVM läuft und sein Existenzrecht komplett bewiesen hat. Bare Metal, IOMMU und TPM kommen danach.</p>
+      <p>Nichts unterhalb der Linie wird beansprucht. Gemergt heisst: auf <code>main</code>, Gates grün unter KVM, Tag steht aus. Ziel 1.0: ein fertiges KI-OS, das unter QEMU/KVM läuft und sein Existenzrecht komplett bewiesen hat. Bare Metal, IOMMU und TPM kommen danach.</p>
     </div>
     <ul class="timeline">
       <li><span class="v">v0.13–16</span><span class="pill ok">bewiesen</span><span class="t"><b>Persistenz &amp; Trust</b> — blake3-WAL, Crash-Recovery (apply → reboot → Zustand intakt), dreistufige Ed25519-Signaturkette.</span></li>
@@ -142,7 +142,9 @@
       <li><span class="v">v0.25</span><span class="pill ok">bewiesen</span><span class="t"><b>ArkDB</b> — mit dem SDK gebaut, golden-getestet gegen SQLite: kv_read 0.79×, Group-Commit 0.119 je Statement. Modell-Decke 256 MiB → 1 GiB.</span></li>
       <li><span class="v">v0.26</span><span class="pill ok">bewiesen</span><span class="t"><b>MCP-Ops</b> — 13 Tools auf gw-admin, RBAC, Audit-vor-Wirkung, persistenter Schalter. Demo: KI deployt Cell und liest Logs ohne Console.</span></li>
       <li><span class="v">v0.27</span><span class="pill ok">bewiesen</span><span class="t"><b>Modelle grösser als RAM</b> — Store v4 (Extents, 48-Bit-Längen), Demand-Paging mit blake3-Verifikation, FIFO-Eviction mit TLB-Shootdown, Agenten-DB mit drei Lesern cross-core.</span></li>
-      <li><span class="v">nächste</span><span class="pill plan">geplant</span><span class="t"><b>SIMD-blake3</b> — Phasen-Split zeigt den Hash als dickste Phase beim Page-in (~14M Zyklen je Fenster); nächster benannter Perf-Hebel.</span></li>
+      <li><span class="v">nach v0.27</span><span class="pill ok">gemergt</span><span class="t"><b>KVM-belegt, noch nicht getaggt</b> — T-GM9 SIMD-blake3 (#198); T-GM10 Evict-Ahead (#199): Page-in avg −24&nbsp;%, p90 −28&nbsp;%, Druck-Skips 1089&nbsp;→&nbsp;8; 6-GiB-Sweep 51.0&nbsp;s, 120&nbsp;MiB/s (#211); T-DB19 Seiten-Cache (#200): Scan 3.55×&nbsp;→&nbsp;1.63×; T-DB20 (#201): jeder Commit durabel, Einzel-Write 25.4×, Opt-in 2.61×.</span></li>
+      <li><span class="v">nächste</span><span class="pill plan">geplant</span><span class="t"><b>T-DB21 — Bodies vor der Antwort durabel.</b> «Durabel» heisst heute Root stabil; die vollständige Variante ist geplant, Owner-Entscheid offen.</span></li>
+      <li><span class="v">nächste</span><span class="pill plan">geplant</span><span class="t"><b>T-GM11 — Sweep-Rest zuordnen.</b> Die Wanduhr des 6-GiB-Sweeps liegt überwiegend ausserhalb des gemessenen Page-in-Pfads; PR #212 offen, KVM ausstehend.</span></li>
       <li><span class="v">nächste</span><span class="pill plan">geplant</span><span class="t"><b>N4 Head-Bindung im SDK</b> — der DB-Stand als Einzeiler an den Audit-Head gebunden; Baustein für EU-AI-Act Art.&nbsp;12 (Frist 2.12.2027, Omnibus).</span></li>
       <li><span class="v">später</span><span class="pill plan">geplant</span><span class="t"><b>Egress-Caps</b> (Ziel-Whitelist für ausgehende Verbindungen) und <b>KV-Cache als OS-Objekt</b> — Konzept vorhanden, nicht gebaut.</span></li>
       <li><span class="v">post-1.0</span><span class="pill">nicht vor 1.0</span><span class="t"><b>Bare Metal, IOMMU, TPM, Multi-Node.</b> Heute heisst HA eine Maschine, und das Ziel bleibt QEMU/KVM.</span></li>
