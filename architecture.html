@@ -204,7 +204,7 @@
       <li><span class="v bad">nicht da</span><span>GPU. KI-Rechnen läuft CPU-only in der Cell; grosse Modelle sind Batch-Agenten, interaktive Inferenz kommt per API durchs Gateway.</span></li>
       <li><span class="v bad">nicht da</span><span>Egress-Caps (Ziel-Whitelist für ausgehende Verbindungen) und Log-Retention-Policy — beides geplant, Owner-Entscheide offen.</span></li>
       <li><span class="v">begrenzt</span><span>Sealing deckt ausgewählte Stores, nicht jedes Byte; die Audit-Kette ist bewusst Klartext. Externes Anchoring der Kette ist Roadmap.</span></li>
-      <li><span class="v">begrenzt</span><span>Eviction ist reines FIFO, seit T-GM10 mit Evict-Ahead unter Druck. SIMD-blake3 ist gemergt (T-GM9); der Rest der Sweep-Wanduhr liegt ausserhalb des gemessenen Page-in-Pfads und ist noch nicht zugeordnet (T-GM11, offen).</span></li>
+      <li><span class="v">begrenzt</span><span>Eviction ist reines FIFO, seit T-GM10 mit Evict-Ahead unter Druck. SIMD-blake3 (T-GM9) und der Serial-FIFO-Burst (T-GM11) sind gemergt; was von der Sweep-Wanduhr bleibt, ist zugeordnet: jedes Log-Byte kostet noch einen VM-Exit, die Page-in-Zeile allein 19.9 s von 31.8 s. Ein Log-Kanal ohne Byte-Exit (T-GM12) ist geplant, nicht gebaut.</span></li>
       <li><span class="v">begrenzt</span><span>ArkDB «durabel» heisst heute: der Root ist bei jedem Commit gespült, die Seiten folgen asynchron über die Spiegel-Runde. Bodies vor der Antwort durabel (T-DB21) ist geplant, nicht gebaut.</span></li>
     </ul>
   </div>

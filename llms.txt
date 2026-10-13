@@ -4,10 +4,11 @@
 
 Sprache: Deutsch. Positionierung: beweisbar statt versprochen. Zielgruppe: Entwickler und KI-Agenten.
 
-## Belegte Fakten v0.27 (Wert · Gate · Umgebung) — Stand 13.10.2026, inkl. nach dem Tag gemergter, KVM-belegter Tranchen (PRs #198–#201, #211)
+## Belegte Fakten v0.27 (Wert · Gate · Umgebung) — Stand 13.10.2026, inkl. nach dem Tag gemergter, KVM-belegter Tranchen (PRs #198–#201, #211, #212)
 
 - 6-GiB-Modell läuft unter 4-GiB-RAM-Budget komplett durch (3372 MiB paged-in) · v27_gm5 · KVM
-- Demand-Paging: #PF → 2-MiB-Fenster von Disk → blake3-verifiziert → read-only gemappt; 6-GiB-Sweep unter Speicherdruck 51.0 s, 120 MiB/s, 1390 Evictions · v27_gm6 (KVM-Lauf 13.10., PR #211)
+- Demand-Paging: #PF → 2-MiB-Fenster von Disk → blake3-verifiziert → read-only gemappt; 6-GiB-Sweep unter Speicherdruck 31.8 s, 193 MiB/s, 1390 Evictions (T-GM11: 51.0 → 31.8 s, 120 → 193 MiB/s; ein Lauf je Seite) · v27_gm6 (KVM-Lauf 13.10. nach T-GM11, PR #212; Kernel dev-Profil wie im Gate gebaut)
+- Serial-Sendepfad (T-GM11, PR #212): Port-Zugriffe je Log-Byte 2.000 → 1.062 (16-Byte-FIFO-Burst), Zyklen je Byte −31 %, avg je Page-in 14.3M → 10.4M Zyklen; Rest = ein VM-Exit je Log-Byte (~48 000 Zyklen), Page-in-Zeile 19.9 s von 31.8 s · v28_gm11_serial · KVM
 - Evict-Ahead (T-GM10, PR #199): Page-in avg −24 %, p90 −28 % gegenüber T-GM9; Druck-Skips 1089 → 8 · GEMESSEN T-GM10 tail_report · KVM
 - Manipuliertes Fenster wird verweigert; Cell stirbt sauber, System lebt · v27_gm5/gm6
 - FIFO-Eviction mit TLB-Shootdown, Working-Set-Budget je Cell: 8/8 und 4/4, erreicht und nie überschritten · v27_gm6
@@ -24,7 +25,7 @@ Sprache: Deutsch. Positionierung: beweisbar statt versprochen. Zielgruppe: Entwi
 ## Geplant (nicht gebaut)
 
 - T-DB21: Bodies vor der Antwort durabel («Schweizer Variante vollständig»); Owner-Entscheid offen
-- T-GM11: Rest der Sweep-Wanduhr ausserhalb des Page-in-Pfads zuordnen; PR #212 offen, KVM ausstehend
+- T-GM12: Log-Kanal ohne Byte-Exit (virtio-serial statt Port-I/O je Byte); Mass-Stab ~20 s von 31.8 s im 6-GiB-Sweep; Plan in PR #213 (offen), nicht gebaut
 - N4 Head-Bindung im SDK (EU-AI-Act Art. 12, Frist 2.12.2027)
 - Egress-Caps; KV-Cache als OS-Objekt (später)
 - Post-1.0: Bare Metal, IOMMU, TPM, Multi-Node
